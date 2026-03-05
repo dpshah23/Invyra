@@ -2,6 +2,7 @@ import json
 import os
 import pickle
 import re
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
@@ -13,6 +14,14 @@ from django.views.decorators.http import require_POST
 from invoices.models import invoices
 
 from .models import fraud_analysis
+
+try:
+    import joblib
+    import pandas as pd
+    HAS_ML_DEPS = True
+except ImportError:
+    HAS_ML_DEPS = False
+
 
 
 DEFAULT_MODEL_BUNDLE = {
@@ -60,15 +69,27 @@ def _to_float(value, default=0.0):
 @lru_cache(maxsize=1)
 def _load_model_bundle():
 	model_path = getattr(settings, "FRAUD_MODEL_PICKLE_PATH", "")
-	if model_path and os.path.exists(model_path):
-		try:
-			with open(model_path, "rb") as model_file:
-				loaded = pickle.load(model_file)
-			if isinstance(loaded, dict):
-				return loaded
-		except Exception:
-			pass
-	return DEFAULT_MODEL_BUNDLE
+	# Note: by default this path looks for fraud_detection/model/fraud_model.pkl
+	# But in InvGuard the real model is often saved as invoice_fraud_model.pkl
+	real_model_path = os.path.join(settings.BASE_DIR, "fraud_detection", "invoice_fraud_model.pkl")
+	
+	for path in [model_path, real_model_path]:
+		if path and os.path.exists(path):
+			try:
+				if HAS_ML_DEPS:
+					loaded = joblib.load(path)
+					if hasattr(loaded, "predict"):
+						return {"type": "sklearn", "model": loaded}
+			except Exception:
+				pass
+			try:
+				with open(path, "rb") as model_file:
+					loaded = pickle.load(model_file)
+				if isinstance(loaded, dict):
+					return {"type": "dict", "model": loaded}
+			except Exception:
+				pass
+	return {"type": "dict", "model": DEFAULT_MODEL_BUNDLE}
 
 
 def _extract_features(payload, model_bundle):
@@ -146,6 +167,99 @@ def _score_from_bundle(features, model_bundle):
 		"model_version": str(model_bundle.get("version", "demo-rule-v1")),
 	}
 
+def _score_from_sklearn(payload, model):
+	if not HAS_ML_DEPS:
+		return _score_from_bundle(_extract_features(payload, DEFAULT_MODEL_BUNDLE), DEFAULT_MODEL_BUNDLE)
+
+	# Try to build a dataframe row based on typical features
+	row_dict = {
+		'invoice_id': payload.get('invoice_id', 'UNK'),
+		'invoice_number': payload.get('invoice_number', ''),
+		'vendor_id': 'V000',
+		'vendor_name': payload.get('vendor_name', ''),
+		'vendor_email': '',
+		'vendor_address': '',
+		'purchase_order_number': '',
+		'item_description': 'Unknown',
+		'quantity': 1.0,
+		'unit_price': _to_float(payload.get('total_amount'), 0.0),
+		'subtotal': _to_float(payload.get('total_amount'), 0.0),
+		'tax_amount': 0.0,
+		'discount': 0.0,
+		'total_amount': _to_float(payload.get('total_amount'), 0.0),
+		'currency': payload.get('currency', 'USD'),
+		'currency_change_flag': 0.0,
+		'bank_account_number': payload.get('bank_account', ''),
+		'bank_name': 'Unknown',
+		'payment_method': 'Bank Transfer',
+		'duplicate_invoice': 0.0,
+		'bank_changed': 0.0,
+		'vendor_avg_amount': _to_float(payload.get('total_amount'), 0.0),
+		'amount_ratio': 1.0,
+		'invoice_frequency_last30days': 1.0,
+		'vendor_risk_score': 50.0,
+		'days_since_last_invoice': 30.0,
+		'is_new_vendor': 1.0,
+		'invoice_day': 1,
+		'invoice_month': 1,
+		'invoice_year': 2026,
+		'due_day': 1,
+		'due_month': 1
+	}
+
+	date_str = payload.get("invoice_date")
+	if date_str:
+		try:
+			dt = datetime.fromisoformat(date_str)
+			row_dict['invoice_day'] = dt.day
+			row_dict['invoice_month'] = dt.month
+			row_dict['invoice_year'] = dt.year
+		except:
+			pass
+			
+	due_str = payload.get("due_date")
+	if due_str:
+		try:
+			dt = datetime.fromisoformat(due_str)
+			row_dict['due_day'] = dt.day
+			row_dict['due_month'] = dt.month
+		except:
+			pass
+
+	df = pd.DataFrame([row_dict])
+	
+	try:
+		if hasattr(model, "predict_proba"):
+			probas = model.predict_proba(df)
+			score = float(probas[0][1]) if probas.shape[1] > 1 else float(probas[0][0])
+		else:
+			preds = model.predict(df)
+			score = 1.0 if preds[0] else 0.0
+	except Exception as e:
+		score = 0.5 # fallback
+
+	high_th = 0.75
+	medium_th = 0.45
+
+	if score >= high_th:
+		risk_label = "high"
+	elif score >= medium_th:
+		risk_label = "medium"
+	else:
+		risk_label = "low"
+
+	reason = "Machine Learning AI Analysis completed."
+	if score >= medium_th:
+		reason += " High risk indicators flagged by the model."
+		
+	return {
+		"risk_score": round(score, 4),
+		"risk_label": risk_label,
+		"is_fraud": risk_label in {"high", "medium"},
+		"reason": reason,
+		"model_version": "sklearn-rf-v1",
+	}
+
 
 @csrf_exempt
 @require_POST
@@ -160,9 +274,15 @@ def detect_risk(request):
 	if missing:
 		return JsonResponse({"error": f"Missing required fields: {', '.join(missing)}"}, status=400)
 
-	model_bundle = _load_model_bundle()
-	features = _extract_features(payload, model_bundle)
-	score_result = _score_from_bundle(features, model_bundle)
+	model_bundle_info = _load_model_bundle()
+	
+	if model_bundle_info["type"] == "sklearn":
+		features = _extract_features(payload, DEFAULT_MODEL_BUNDLE) # keep fallback features for DB
+		score_result = _score_from_sklearn(payload, model_bundle_info["model"])
+	else:
+		model_bundle = model_bundle_info["model"]
+		features = _extract_features(payload, model_bundle)
+		score_result = _score_from_bundle(features, model_bundle)
 
 	record = fraud_analysis.objects.create(
 		username=str(payload.get("username", "")).strip(),

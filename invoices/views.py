@@ -13,6 +13,19 @@ from django.urls import reverse
 
 from .models import invoices
 
+# Configure pytesseract to find tesseract binary
+import os
+possible_tesseract_paths = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+    r"C:\Users\dpsha\AppData\Local\Tesseract-OCR\tesseract.exe",
+]
+
+for path in possible_tesseract_paths:
+    if os.path.exists(path):
+        pytesseract.pytesseract.pytesseract_cmd = path
+        break
+
 
 def _sorted_lines(tokens, y_tolerance=12):
     lines = []

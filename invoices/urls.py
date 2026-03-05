@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import *
+from . import views
 
 urlpatterns = [
-	path('upload/', invoice_upload, name='invoice_upload'),
+	path('upload/', views.invoice_upload, name='invoice_upload'),
 ]

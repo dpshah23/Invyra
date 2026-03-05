@@ -3,3 +3,6 @@ django
 stripe
 pytesseract
 Pillow
+scikit-learn
+pandas
+joblib
