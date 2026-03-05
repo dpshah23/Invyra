@@ -11,7 +11,8 @@ from django.shortcuts import redirect, render
 from django.test import Client
 from django.urls import reverse
 
-from .models import invoices
+from .models import invoices, blockchain_records
+from .blockchain_utils import record_invoice_on_blockchain
 
 # Configure pytesseract to find tesseract binary
 import os
@@ -275,6 +276,37 @@ def invoice_upload(request):
         invoice_obj.status = "risk_failed"
         invoice_obj.save(update_fields=["status", "updated_at"])
 
+    # Record invoice on blockchain
+    blockchain_result = None
+    blockchain_error = None
+    try:
+        blockchain_data = {
+            'invoice_number': invoice_number,
+            'vendor_name': extracted["vendor_name"],
+            'total_amount': str(extracted["total_amount"]),
+            'risk_score': str(invoice_obj.risk_score) if invoice_obj.risk_score else '0.0',
+            'invoice_date': extracted["invoice_date"].isoformat() if extracted["invoice_date"] else '',
+            'raw_text': extracted["raw_text"],
+        }
+        
+        blockchain_result = record_invoice_on_blockchain(blockchain_data)
+        
+        if blockchain_result['success']:
+            # Save blockchain transaction record
+            blockchain_records.objects.create(
+                invoice_id=invoice_obj,
+                transaction_hash=blockchain_result['tx_hash'],
+                invoice_hash=blockchain_result['document_hash'],
+                network='ganache',
+                block_number=blockchain_result['block_number']
+            )
+            invoice_obj.status = "blockchain_recorded"
+            invoice_obj.save(update_fields=["status", "updated_at"])
+        else:
+            blockchain_error = blockchain_result.get('error', 'Unknown blockchain error')
+    except Exception as e:
+        blockchain_error = str(e)
+
     context = {
         "ocr_text": extracted["raw_text"],
         "extracted_json": json.dumps(
@@ -293,6 +325,8 @@ def invoice_upload(request):
         "risk_result": risk_call["data"],
         "invoice_obj": invoice_obj,
         "risk_error": None if risk_call["ok"] else risk_call["data"],
+        "blockchain_result": blockchain_result,
+        "blockchain_error": blockchain_error,
     }
     return render(request, "invoice_upload.html", context)
         

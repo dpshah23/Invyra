@@ -44,3 +44,14 @@ class invoice_items(models.Model):
         return f"{self.description} - {self.quantity} x {self.unit_price} = {self.total_price}"
     
     
+class blockchain_records(models.Model):
+    invoice_id= models.ForeignKey(invoices, on_delete=models.CASCADE, related_name='blockchain_records')
+    transaction_hash = models.CharField(max_length=255, blank=True, default="")
+    invoice_hash = models.CharField(max_length=255, blank=True, default="")
+    network = models.CharField(max_length=50, default="ethereum")
+    timestamp = models.DateTimeField(auto_now_add=True)
+    block_number = models.IntegerField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Blockchain Record for Invoice {self.invoice_id.invoice_number} - TxHash: {self.transaction_hash}"  
+    

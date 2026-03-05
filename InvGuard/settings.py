@@ -158,6 +158,9 @@ FRAUD_MODEL_PICKLE_PATH = os.getenv(
     str(BASE_DIR / "fraud_detection" / "model" / "fraud_model.pkl"),
 )
 
+# Blockchain settings
+GANACHE_URL = os.getenv("GANACHE_URL", "http://127.0.0.1:7545")
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 

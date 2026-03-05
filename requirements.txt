@@ -6,3 +6,4 @@ Pillow
 scikit-learn
 pandas
 joblib
+web3

@@ -105,6 +105,32 @@
         </div>
         {% endif %}
 
+        {% if blockchain_result %}
+        <div class="card {% if blockchain_result.success %}ok{% else %}error{% endif %}">
+            <h3>🔗 Blockchain Record</h3>
+            {% if blockchain_result.success %}
+                <strong>✓ Transaction Successful</strong><br>
+                <strong>Transaction Hash:</strong> <code style="color: #60a5fa;">{{ blockchain_result.tx_hash }}</code><br>
+                <strong>Document Hash:</strong> <code style="color: #60a5fa;">{{ blockchain_result.document_hash }}</code><br>
+                <strong>Block Number:</strong> {{ blockchain_result.block_number }}<br>
+                <strong>Gas Used:</strong> {{ blockchain_result.gas_used }}<br>
+                <em style="color: #94a3b8;">Invoice fingerprint permanently recorded on blockchain for tamper detection.</em>
+            {% else %}
+                <strong>✗ Blockchain Recording Failed</strong><br>
+                <strong>Error:</strong> {{ blockchain_result.error }}<br>
+                <strong>Document Hash:</strong> <code>{{ blockchain_result.document_hash }}</code>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if blockchain_error %}
+        <div class="card error">
+            <h3>⚠ Blockchain Error</h3>
+            <pre>{{ blockchain_error }}</pre>
+            <p><em>Make sure Ganache is running on http://127.0.0.1:7545 and the contract is deployed.</em></p>
+        </div>
+        {% endif %}
+
         {% if ocr_text %}
         <div class="card">
             <h3>OCR Raw Text</h3>
