@@ -6,11 +6,19 @@ from django_ratelimit.decorators import ratelimit
 
 # Create your views here.
 
+POST_LOGIN_FALLBACK = '/auth/dashboard/'
+
+
+def dashboard(request):
+    if not request.session.get('username'):
+        return redirect('/auth/login/')
+    return render(request, 'dashboard.html', {'name': request.session.get('name', '')})
+
 @ratelimit(key='ip', rate='5/m', block=True)
 def signup(request):
     
     if request.session.get('username'):
-        return redirect('/')
+        return redirect(POST_LOGIN_FALLBACK)
 
     if request.method == 'POST':
         email = (request.POST.get('email') or '').strip().lower()
@@ -35,8 +43,12 @@ def signup(request):
 @ratelimit(key='ip', rate='5/m', block=True)
 def login(request):
 
+    next_path = (request.GET.get('next') or '').strip()
+    if next_path.startswith('/'):
+        request.session['post_login_next'] = next_path
+
     if request.session.get('username'):
-        return redirect('/')
+        return redirect(POST_LOGIN_FALLBACK)
 
     if request.method == 'POST':
         email = (request.POST.get('email') or request.POST.get('username') or '').strip().lower()
@@ -53,6 +65,7 @@ def login(request):
         if user.check_password(password):
             session = request.session
             # session['user_id'] = user.id
+            session.cycle_key()
             session['username'] = user.username
             session['email'] = user.email
             session['name'] = user.name
@@ -60,7 +73,12 @@ def login(request):
             # update last login time to now
             user.lst_login = timezone.now()
             user.save()
-            return render(request,'dashboard.html',{'name':user.name})
+
+            redirect_path = request.session.pop('post_login_next', '')
+            if redirect_path.startswith('/'):
+                return redirect(redirect_path)
+
+            return redirect(POST_LOGIN_FALLBACK)
 
         return render(request, 'login.html', {'error': 'Invalid email or password'})
 

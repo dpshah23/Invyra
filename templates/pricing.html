@@ -178,7 +178,14 @@
                             <div class="alert alert-warning small py-2 mt-auto mb-3" role="alert">
                                 Upgrade to Pro to continue analyzing invoices.
                             </div>
-                            <button type="button" class="w-100 btn btn-lg btn-outline-primary">Sign up for free</button>
+                            <form method="POST" action="{% url 'stripe_checkout' %}" class="w-100">
+                                {% csrf_token %}
+                                <input type="hidden" name="plan_name" value="Free">
+                                <input type="hidden" name="plan_price" value="0">
+                                <input type="hidden" name="plan_limit" value="10">
+                                <input type="hidden" name="plan_description" value="10 invoice analyses per month, Basic AI fraud detection, Invoice upload and analysis, Fraud risk score">
+                                <button type="submit" class="w-100 btn btn-lg btn-outline-primary">Sign up for free</button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -212,7 +219,14 @@
                                 <li>No API integration</li>
                                 <li>No team accounts</li>
                             </ul>
-                            <button type="button" class="w-100 btn btn-lg btn-primary mt-auto">Get started</button>
+                            <form method="POST" action="{% url 'stripe_checkout' %}" class="w-100">
+                                {% csrf_token %}
+                                <input type="hidden" name="plan_name" value="Pro">
+                                <input type="hidden" name="plan_price" value="9.99">
+                                <input type="hidden" name="plan_limit" value="1000">
+                                <input type="hidden" name="plan_description" value="1000 invoice analyses per month, Advanced AI fraud detection, Blockchain verification, Vendor analytics, Export reports, Priority processing">
+                                <button type="submit" class="w-100 btn btn-lg btn-primary mt-auto">Get started</button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -244,7 +258,14 @@
                                 <li>Vendor risk analytics dashboard</li>
                                 <li>Exportable compliance reports</li>
                             </ul>
-                            <button type="button" class="w-100 btn btn-lg btn-primary mt-auto">Get started</button>
+                            <form method="POST" action="{% url 'stripe_checkout' %}" class="w-100">
+                                {% csrf_token %}
+                                <input type="hidden" name="plan_name" value="Enterprise">
+                                <input type="hidden" name="plan_price" value="19.99">
+                                <input type="hidden" name="plan_limit" value="Unlimited">
+                                <input type="hidden" name="plan_description" value="Unlimited invoice analyses, Unlimited fraud analysis, API access, Team collaboration, Multiple users, Custom fraud rules, Real-time alerts, Bulk processing">
+                                <button type="submit" class="w-100 btn btn-lg btn-primary mt-auto">Get started</button>
+                            </form>
                         </div>
                     </div>
                 </div>
