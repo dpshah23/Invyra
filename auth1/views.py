@@ -1,11 +1,16 @@
-from django.shortcuts import render
+from django.shortcuts import render,redirect
 
 from auth1.models import UserCustom as User
 from django.utils import timezone
+from django_ratelimit.decorators import ratelimit
 
 # Create your views here.
 
+@ratelimit(key='ip', rate='5/m', block=True)
 def signup(request):
+    
+    if request.session.get('username'):
+        return redirect('/')
 
     if request.method == 'POST':
         email = (request.POST.get('email') or '').strip().lower()
@@ -27,7 +32,11 @@ def signup(request):
 
     return render(request,'login.html')
 
+@ratelimit(key='ip', rate='5/m', block=True)
 def login(request):
+
+    if request.session.get('username'):
+        return redirect('/')
 
     if request.method == 'POST':
         email = (request.POST.get('email') or request.POST.get('username') or '').strip().lower()
@@ -57,7 +66,10 @@ def login(request):
 
     return render(request,'login.html')
 
+@ratelimit(key='ip', rate='5/m', block=True)
 def logout(request):
     request.session.flush()
     return render(request,'login.html')
 
+
+# def guest_session(request)
