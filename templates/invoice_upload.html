@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice OCR Upload | Invyra</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            margin: 0;
+            padding: 24px;
+        }
+        .wrap {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 18px;
+        }
+        .btn {
+            background: #0284c7;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 14px;
+            cursor: pointer;
+        }
+        .error {
+            color: #fecaca;
+            background: #7f1d1d;
+            border: 1px solid #ef4444;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .ok {
+            color: #dcfce7;
+            background: #14532d;
+            border: 1px solid #22c55e;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        pre {
+            white-space: pre-wrap;
+            background: #0b1220;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px;
+            overflow-x: auto;
+        }
+        input[type="file"] {
+            margin: 12px 0;
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <h2>Upload Invoice (OCR Pipeline)</h2>
+            <p>Flow: OCR -> field extraction -> normalized JSON -> fraud_detection POST -> DB storage.</p>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="file" name="invoice" accept="image/png,image/jpeg,image/jpg" required>
+                <br>
+                <button type="submit" class="btn">Process Invoice</button>
+            </form>
+        </div>
+
+        {% if error %}
+        <div class="card error">{{ error }}</div>
+        {% endif %}
+
+        {% if invoice_obj %}
+        <div class="card ok">
+            <strong>Saved Invoice:</strong> {{ invoice_obj.invoice_number }}<br>
+            <strong>Status:</strong> {{ invoice_obj.status }}<br>
+            <strong>Risk:</strong> {{ invoice_obj.risk_label }} ({{ invoice_obj.risk_score }})
+        </div>
+        {% endif %}
+
+        {% if extracted_json %}
+        <div class="card">
+            <h3>Normalized JSON</h3>
+            <pre>{{ extracted_json }}</pre>
+        </div>
+        {% endif %}
+
+        {% if risk_result %}
+        <div class="card">
+            <h3>Fraud Detection Response</h3>
+            <pre>{{ risk_result }}</pre>
+        </div>
+        {% endif %}
+
+        {% if risk_error %}
+        <div class="card error">
+            <h3>Fraud Detection Error</h3>
+            <pre>{{ risk_error }}</pre>
+        </div>
+        {% endif %}
+
+        {% if ocr_text %}
+        <div class="card">
+            <h3>OCR Raw Text</h3>
+            <pre>{{ ocr_text }}</pre>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

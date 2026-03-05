@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     'auth1',
     'jazzmin',
     'subscriptions',
+    'invoices',
+    'fraud_detection',
     
     'django.contrib.admin',
     'django.contrib.auth',
@@ -151,6 +153,10 @@ STRIPE_PAYMENT_METHOD_TYPES = [
     for item in os.getenv("STRIPE_PAYMENT_METHOD_TYPES", "card").split(",")
     if item.strip()
 ]
+FRAUD_MODEL_PICKLE_PATH = os.getenv(
+    "FRAUD_MODEL_PICKLE_PATH",
+    str(BASE_DIR / "fraud_detection" / "model" / "fraud_model.pkl"),
+)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

@@ -1,3 +1,5 @@
 django-jazzmin
 django
 stripe
+pytesseract
+Pillow
