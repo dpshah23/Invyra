@@ -1,0 +1,94 @@
+{% extends "navbar.html" %}
+{% block title %}Login/SIgn Up{% endblock title %}
+
+{% block body%}
+<link rel="stylesheet" href="/static/css/login.css">  
+    <div class="login-body">  
+    <div class="login-container">
+      <div class="login-slider"></div>
+      <div class="login-btn">
+        <button class="login-login">Login</button>
+        <button class="login-signup">Signup</button>
+      </div>
+      <!-- login form -->
+      <div class="login-form-section">
+        <form action="/auth/login/" method="post">
+          {%csrf_token%}
+        <div class="login-login-box">
+          <input
+            type="email"
+            class="email ele"
+            name="email"
+            placeholder="youremail@email.com"
+          />
+          <input type="password" class="password ele" placeholder="password" name="password"/>
+          <button class="submit" onclick="showToast(loginmsg)">Login</button>
+        </div>
+      </form>
+        <!--signup form-->
+
+      <form action="/auth/signup/" method="POST">
+        {%csrf_token%}
+        <div class="login-signup-box" id="signup-form">
+          <input
+            type="text"
+            class="username ele"
+            id="username"
+            placeholder="Enter your Username"
+            name="username"
+          />
+          <span id="username-error" class="error-message"></span>
+          <input
+            type="email"
+            class="email ele"
+            placeholder="youremail@email.com"
+            name="email"
+          />
+
+          <input
+            type="text"
+            class="name ele"
+            placeholder="Enter your Name"
+            name="name"
+          />
+
+          <div class="password-container ele">
+            <input
+              type="password"
+              class="password"
+              id="password"
+              placeholder="Password"
+              name="password"
+            />
+            <i
+              class="bx bx-hide eye-icon"
+              onclick="togglePassword('password', this)"
+            ></i>
+          </div>
+          <div class="password-container ele">
+            <input
+              type="password"
+              class="password"
+              id="ConfirmPassword"
+              placeholder="Confirm password"
+              name="confirm_password"
+            />
+            <i
+              class="bx bx-hide eye-icon"
+              onclick="togglePassword('ConfirmPassword', this)"
+            ></i>
+          </div>
+          <span id="password-match-error" class="error"></span>
+          <button class="submit" ><a href="">Submit</a></button>
+        </div>
+      </form>
+      </div>
+
+    </div>
+
+    <div id="toastBox">
+        
+    </div>
+  </div>
+ 
+{% endblock body%}

@@ -4,3 +4,4 @@ __pyachache__/
 *.pyo
 *.pyd
 DEV.md
+db.sqlite3

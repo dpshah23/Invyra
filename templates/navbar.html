@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/static/images/final_fav.ico">
+
+    <!-- 
+      - primary meta tags
+    -->
+    <title> {% block title %}{% endblock title %} | InvGuard</title>
+  
+    <!-- 
+      - favicon
+    -->
+    <link rel="shortcut icon" href="/favicon.svg" type="image/svg+xml">
+  
+    <!-- 
+      - custom css link
+    -->
+    <link rel="stylesheet" href="/static/css/navbar.css">
+  
+    <!-- 
+      - google font link
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- 
+    - Font Aweosome link
+  -->
+  <script src="https://kit.fontawesome.com/36d72e7e2f.js" crossorigin="anonymous"></script>
+
+  
+    
+  </head>
+  <body>
+    <!-- Navbar -->
+    <header class="header section" data-header>
+      <div class="container">
+  
+        <a href="/" class="logo">
+          <img src="/static/images/cv2.png" width="129" height="40" alt="Blogy logo">
+        </a>
+  
+        <nav class="navbar" data-navbar>
+          <ul class="navbar-list">
+  
+            <li class="navbar-item">
+              <a href="/" class="navbar-link hover:underline" data-nav-link>Home</a>
+            </li>
+            {% if not request.session.email == email %}
+            <li class="navbar-item">
+              <a href="/chat/" class="navbar-link hover:underline" data-nav-link>Channels</a>
+            </li>
+            {%else%}
+            <li class="navbar-item">
+              <a href="/channels/" class="navbar-link hover:underline" data-nav-link>Channels</a>
+            </li>
+            {%endif%}
+            {% if 'email' not in request.session %}
+            {% else %}
+            <li class="navbar-item">
+              <a href="/profile/{{request.session.username}}" class="navbar-link hover:underline" data-nav-link>Profile</a>
+            </li>
+            {% endif %}
+            {% if not request.session.email == email %}
+            <li class="navbar-item">
+              <a href="/auth/logout/" class="navbar-link hover:underline" data-nav-link>Logout</a>
+            </li>
+            
+            {%else%}
+
+            <li class="navbar-item">
+              <a href="/auth/login/" class="navbar-link hover:underline" data-nav-link>Login/Sign Up</a>
+            </li>
+
+            {%endif%}
+
+  
+          </ul>
+        </nav>
+  
+        <div class="wrapper">
+  
+         
+  
+          <button class="nav-toggle-btn" aria-label="toggle menu" data-nav-toggler>
+            <span class="span one"></span>
+            <span class="span two"></span>
+            <span class="span three"></span>
+          </button>
+  
+          
+  
+        </div>
+  
+      </div>
+    </header>
+    
+    
+    {% block body %}{% endblock body %}
+    <script src="/static/js/script.js"></script>
+    </body>
+</html>
