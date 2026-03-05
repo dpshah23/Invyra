@@ -1,7 +1,7 @@
 from django.db import models
 import bcrypt
 import hashlib
-
+from django.contrib.auth.hashers import make_password, check_password
 # Create your models here.
 
 
@@ -28,11 +28,9 @@ class UserCustom(models.Model):
         return unique_username
 
 
-    def hashpassword(self,password):
-        salt = bcrypt.gensalt()
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
-        return hashed_password.decode('utf-8')
-    
-    def check_password(self, password):
-    
-        return bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)

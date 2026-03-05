@@ -11,6 +11,13 @@
 </head>
 
 <body>
+  {% if error %}
+  <div class="auth-alert auth-alert-error">{{ error }}</div>
+  {% endif %}
+
+  {% if success %}
+  <div class="auth-alert auth-alert-success">{{ success }}</div>
+  {% endif %}
 
   <div class="container" id="container">
     <div class="form-container sign-up">
@@ -42,8 +49,8 @@
           <a href="#" class="icon"><i class="fa-brands fa-linkedin-in"></i></a>
         </div>
         <span>or use your email password</span>
-        <input type="email" placeholder="Email">
-        <input type="password" placeholder="Password">
+        <input type="email" placeholder="Email" name="email">
+        <input type="password" placeholder="Password" name="password">
         <a href="#">Forget Your Password?</a>
         <input type="submit" value="Sign In">
       </form>

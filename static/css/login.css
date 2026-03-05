@@ -16,6 +16,28 @@ body{
     height: 100vh;
 }
 
+.auth-alert {
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 14px;
+    max-width: 768px;
+    padding: 10px 14px;
+    text-align: center;
+    width: calc(100% - 24px);
+}
+
+.auth-alert-error {
+    background-color: #ffe7e7;
+    border: 1px solid #ffb8b8;
+    color: #9e2222;
+}
+
+.auth-alert-success {
+    background-color: #e7f7ea;
+    border: 1px solid #b4e3bd;
+    color: #1f7a30;
+}
+
 .container{
     background-color: #fff;
     border-radius: 30px;

@@ -1,50 +1,60 @@
-from urllib import request
-
 from django.shortcuts import render
 
 from auth1.models import UserCustom as User
+from django.utils import timezone
 
 # Create your views here.
 
 def signup(request):
 
     if request.method == 'POST':
-        print("Signup form submitted")
-        
-        email = request.POST.get('email')
-        name = request.POST.get('name')
-        password = request.POST.get('password')
-        compname=request.POST.get('compname')
+        email = (request.POST.get('email') or '').strip().lower()
+        name = (request.POST.get('name') or '').strip()
+        password = request.POST.get('password') or ''
+        compname = (request.POST.get('compname') or '').strip()
 
-        username=User().generateusername(email)
-        user = User(username=username,email=email,name=name,lstlogin=None,company_name=compname)
-        user.password = user.hashpassword(password)  
-        user.save() 
+        if not email or not name or not password:
+            return render(request, 'login.html', {'error': 'Name, email and password are required'})
+
+        if User.objects.filter(email__iexact=email).exists():
+            return render(request, 'login.html', {'error': 'Email already exists'})
+
+        username = User().generateusername(email)
+        user = User(username=username, email=email, name=name, lst_login=None, company_name=compname)
+        user.set_password(password)
+        user.save()
+        return render(request, 'login.html', {'success': 'Account created. Please sign in.'})
+
     return render(request,'login.html')
 
 def login(request):
 
     if request.method == 'POST':
-            username = request.POST.get('username')
-            password = request.POST.get('password')
+        email = (request.POST.get('email') or request.POST.get('username') or '').strip().lower()
+        password = request.POST.get('password') or ''
 
-            try:
-                user = User.objects.get(username=username)
-                if user.check_password(password):
-                    print("Login successful")
-                    session = request.session
-                    # session['user_id'] = user.id
-                    session['username'] = user.username
-                    session['name'] = user.name
+        if not email or not password:
+            return render(request, 'login.html', {'error': 'Email and password are required'})
 
-                    # update last login time to now
-                    
-                    return render(request,'welcome.html',{'name':user.name})
-                else:
-                    print("Unexpected error occured")
-                    return render(request,'login.html',{'error':'Invalid password'})
-            except User.DoesNotExist:
-                return render(request,'login.html',{'error':'User does not exist'})
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return render(request, 'login.html', {'error': 'Invalid email or password'})
+
+        if user.check_password(password):
+            session = request.session
+            # session['user_id'] = user.id
+            session['username'] = user.username
+            session['email'] = user.email
+            session['name'] = user.name
+
+            # update last login time to now
+            user.lst_login = timezone.now()
+            user.save()
+            return render(request,'dashboard.html',{'name':user.name})
+
+        return render(request, 'login.html', {'error': 'Invalid email or password'})
+
     return render(request,'login.html')
 
 def logout(request):
