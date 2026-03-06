@@ -11,7 +11,84 @@
 </head>
 
 <body>
+    <!-- NAVBAR START -->
+    <style>
+      .invyra-navbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 8%;
+        width: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        background: #0f1b30;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+      .invyra-navbar .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 600;
+        font-size: 20px;
+      }
+      .invyra-navbar .nav-links {
+        display: flex;
+        gap: 30px;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .invyra-navbar .nav-item {
+        text-decoration: none;
+        color: #f5f5f7;
+        position: relative;
+        font-size: 16px;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      .invyra-navbar .dashboard-btn {
+        background: linear-gradient(90deg, #2a52be 30%, #2073c7 54%);
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        color: #f5f5f7;
+        font-size: 16px;
+      }
+      .invyra-navbar .dashboard-btn:hover {
+        opacity: 0.9;
+      }
+    </style>
+    <header class="invyra-navbar">
+      <div class="logo">
+        <a href="/" style="text-decoration: none;">
+            <img src="/static/Images/Invyra Logo.png" alt="Invyra Logo" width="160" height="72">
+        </a>
+      </div>
 
+      <nav>
+        <ul class="nav-links">
+          <li><a href="/" class="nav-item">Home</a></li>
+          {% if request.session.username %}
+            <li><a href="/auth/dashboard/" class="nav-item">Dashboard</a></li>
+          {% else %}
+            <li><a href="/auth/login" class="nav-item">Dashboard</a></li>
+          {% endif %}
+          <li><a href="/about_us" class="nav-item">About</a></li>
+          <li><a href="/subscriptions/pricing/" class="nav-item">Pricing</a></li>
+          <li><a href="/contact_us" class="nav-item">Contact</a></li>
+        </ul>
+      </nav>
+
+      {% if request.session.username %}
+      <a href="/auth/logout"><button class="dashboard-btn">Logout</button></a>
+      {% else %}
+      <a href="/auth/login"><button class="dashboard-btn">Login</button></a>
+      {% endif %}
+    </header>
+    <!-- NAVBAR END -->
 
   {% if error %}
   <div class="auth-alert auth-alert-error">{{ error }}</div>

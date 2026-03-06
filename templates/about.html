@@ -22,15 +22,25 @@
 
         <nav>
             <ul class="nav-links">
-                <li><a href="/templates/home.html" class="nav-item active">Home</a></li>
-                <li><a href="/templates/login.html" class="nav-item">Dashboard</a></li>
-                <li><a href="/templates/about.html" class="nav-item">About</a></li>
-                <li><a href="/templates/pricing.html" class="nav-item">Pricing</a></li>
-                <li><a href="/templates/login.html" class="nav-item">Contact</a></li>
-            </ul>
-        </nav>
+          <li><a href="/" class="nav-item active">Home</a></li>
+          {% if request.session.username %}
+            <li><a href="/auth/dashboard/" class="nav-item">Dashboard</a></li>
+          {% else %}
+            <li><a href="/auth/login" class="nav-item">Dashboard</a></li>
+            {% endif %}
 
-        <a href="/templates/login.html"><button class="dashboard-btn">Login</button></a>
+          <li><a href="/about_us" class="nav-item">About</a></li>
+          <li><a href="/subscriptions/pricing/" class="nav-item">Pricing</a></li>
+          <li><a href="/contact_us" class="nav-item">Contact</a></li>
+        </ul>
+      </nav>
+
+      {% if request.session.username %}
+      <a href="/auth/logout"><button class="dashboard-btn">Logout</button></a>
+      {% else %}
+            <a href="/auth/login"><button class="dashboard-btn">Login</button></a>
+
+      {% endif %}
     </header>
 
     <div class="container">
