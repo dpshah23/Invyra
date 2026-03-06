@@ -12,7 +12,7 @@ from django.test import Client
 from django.urls import reverse
 
 from .models import invoices, blockchain_records
-from .blockchain_utils import record_invoice_on_blockchain
+from .blockchain_utils import record_invoice_on_blockchain, calculate_document_hash, load_contract
 
 # Configure pytesseract to find tesseract binary
 import os
@@ -353,9 +353,10 @@ def invoice_upload(request):
         invoice_obj.status = "risk_failed"
         invoice_obj.save(update_fields=["status", "updated_at"])
 
-    # Record invoice on blockchain
-    blockchain_result = None
+    # Prepare blockchain data for MetaMask frontend signing
+    blockchain_pending_data = None
     blockchain_error = None
+    blockchain_result = None
     
     if invoice_obj.status != "flagged" and invoice_obj.status != "risk_failed" and invoice_obj.status != "rejected":
         try:
@@ -368,23 +369,25 @@ def invoice_upload(request):
                 'raw_text': extracted["raw_text"],
             }
             
-            blockchain_result = record_invoice_on_blockchain(blockchain_data)
+            # Instead of backend signing, calculate hash and pass to frontend
+            doc_hash = calculate_document_hash(blockchain_data)
+            invoice_obj.status = "blockchain_pending"
+            invoice_obj.save(update_fields=["status", "updated_at"])
             
-            if blockchain_result['success']:
-                # Save blockchain transaction record
-                blockchain_records.objects.create(
-                    invoice_id=invoice_obj,
-                    transaction_hash=blockchain_result['tx_hash'],
-                    invoice_hash=blockchain_result['document_hash'],
-                    network='ganache',
-                    block_number=blockchain_result['block_number']
-                )
-                invoice_obj.status = "blockchain_recorded"
-                invoice_obj.save(update_fields=["status", "updated_at"])
-            else:
-                blockchain_error = blockchain_result.get('error', 'Unknown blockchain error')
-                invoice_obj.status = "blockchain_failed"
-                invoice_obj.save(update_fields=["status", "updated_at"])
+            # Fetch Contract info for JS
+            contract, w3 = load_contract()
+            
+            blockchain_pending_data = {
+                'invoice_id': invoice_obj.id,
+                'invoice_number': blockchain_data['invoice_number'],
+                'vendor_name': blockchain_data['vendor_name'],
+                'total_amount': blockchain_data['total_amount'],
+                'risk_score': blockchain_data['risk_score'],
+                'document_hash': doc_hash,
+                'contract_address': contract.address,
+                'contract_abi': json.dumps(contract.abi)
+            }
+            
         except Exception as e:
             blockchain_error = str(e)
             invoice_obj.status = "blockchain_failed"
@@ -444,7 +447,7 @@ def invoice_upload(request):
             "risk_result": risk_call["data"],
             "invoice_obj": invoice_obj,
             "risk_error": None if risk_call["ok"] else risk_call["data"],
-            "blockchain_result": blockchain_result,
+            "blockchain_pending_data": blockchain_pending_data,
             "blockchain_error": blockchain_error,
             "is_guest": is_guest,
             "active_tab": "upload"
@@ -504,4 +507,34 @@ def invoice_detail(request, invoice_id):
         'extracted_json': json.dumps(invoice_obj.extracted_json, indent=2) if invoice_obj.extracted_json else None
     }
     return render(request, 'invoice_details.html', context)
-        
+
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def save_blockchain_record(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            invoice_id = data.get("invoice_id")
+            tx_hash = data.get("tx_hash")
+            document_hash = data.get("document_hash")
+            
+            invoice_obj = get_object_or_404(invoices, id=invoice_id)
+            
+            # Save blockchain transaction record
+            blockchain_records.objects.create(
+                invoice_id=invoice_obj,
+                transaction_hash=tx_hash,
+                invoice_hash=document_hash,
+                network='MetaMask',
+                block_number=0 # Could be passed from frontend if needed
+            )
+            
+            invoice_obj.status = "blockchain_recorded"
+            invoice_obj.save(update_fields=["status", "updated_at"])
+            return JsonResponse({"status": "success"})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)})
+    return JsonResponse({"status": "error", "message": "Invalid request"})

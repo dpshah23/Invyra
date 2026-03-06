@@ -256,17 +256,93 @@
                     <strong style="color: #4ade80; display: block; margin-bottom: 15px; font-size: 18px;">✓ Transaction Successful</strong>
                     <div style="color: #e2e8f0; font-size: 15px; line-height: 1.6;">
                         <p style="margin-bottom: 10px;"><strong style="color: #94a3b8; display: inline-block; width: 160px;">Transaction Hash:</strong> <code style="background: #1e293b; padding: 4px 8px; border-radius: 4px; border: 1px solid #334155;">{{ blockchain_result.tx_hash }}</code></p>
-                        <p style="margin-bottom: 10px;"><strong style="color: #94a3b8; display: inline-block; width: 160px;">Document Hash:</strong> <code style="background: #1e293b; padding: 4px 8px; border-radius: 4px; border: 1px solid #334155;">{{ blockchain_result.document_hash }}</code></p>
-                        <p style="margin-bottom: 10px;"><strong style="color: #94a3b8; display: inline-block; width: 160px;">Block Number:</strong> {{ blockchain_result.block_number }}</p>
-                        <p style="margin-bottom: 10px;"><strong style="color: #94a3b8; display: inline-block; width: 160px;">Gas Used:</strong> {{ blockchain_result.gas_used }}</p>
-                    </div>
-                {% else %}
-                    <strong style="color: #ef4444; display: block; margin-bottom: 15px; font-size: 18px;">✗ Blockchain Recording Failed</strong>
-                    <div style="color: #e2e8f0; font-size: 15px; line-height: 1.6;">
-                        <p style="margin-bottom: 10px;"><strong style="color: #94a3b8; display: inline-block; width: 160px;">Error:</strong> {{ blockchain_result.error }}</p>
-                        <p style="margin-bottom: 10px;"><strong style="color: #94a3b8; display: inline-block; width: 160px;">Document Hash:</strong> <code style="background: #1e293b; padding: 4px 8px; border-radius: 4px; border: 1px solid #334155;">{{ blockchain_result.document_hash }}</code></p>
                     </div>
                 {% endif %}
+            </div>
+            {% endif %}
+
+            {% if blockchain_pending_data %}
+            <div id="metamask-container" class="recent" style="margin-bottom: 18px; border: 2px solid #3b82f6; background: #0f172a;">
+                <h3 style="color: #60a5fa;">🦊 Web3 Verification Required</h3>
+                <p style="color: #e2e8f0; margin-bottom: 15px;">Invoice is clean. Cryptographically sign the record on the blockchain using your MetaMask wallet.</p>
+                <button id="signMetaMaskBtn" style="background: #f6851b; color: white; padding: 10px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; border: none;">Sign with MetaMask</button>
+                <div id="metamask-status" style="margin-top: 15px; color: #94a3b8;"></div>
+
+                <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+                <script>
+                    document.getElementById('signMetaMaskBtn').addEventListener('click', async () => {
+                        const statusDiv = document.getElementById('metamask-status');
+                        const btn = document.getElementById('signMetaMaskBtn');
+                        
+                        if (typeof window.ethereum === 'undefined') {
+                            statusDiv.innerHTML = '<span style="color: #ef4444;">MetaMask is not installed. Please install the browser extension.</span>';
+                            return;
+                        }
+
+                        try {
+                            btn.disabled = true;
+                            btn.innerText = "Connecting...";
+                            
+                            // 1. Connect Account
+                            await window.ethereum.request({ method: 'eth_requestAccounts' });
+                            const provider = new ethers.providers.Web3Provider(window.ethereum);
+                            const signer = provider.getSigner();
+                            const userAddress = await signer.getAddress();
+                            
+                            statusDiv.innerHTML = 'Connected to: ' + userAddress + '<br>Please confirm the transaction in your wallet...';
+                            
+                            // 2. Prepare Contract instance
+                            const contractAddress = "{{ blockchain_pending_data.contract_address }}";
+                            const contractABI = {{ blockchain_pending_data.contract_abi|safe }};
+                            const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+                            // 3. Send Transaction
+                            const invoiceNum = "{{ blockchain_pending_data.invoice_number }}";
+                            const vendor = "{{ blockchain_pending_data.vendor_name|escapejs }}";
+                            const total = "{{ blockchain_pending_data.total_amount }}";
+                            const risk = "{{ blockchain_pending_data.risk_score }}";
+                            const docHash = "{{ blockchain_pending_data.document_hash }}";
+                            
+                            btn.innerText = "Waiting for Confirmation...";
+                            
+                            const tx = await contract.recordInvoice(invoiceNum, vendor, total, risk, docHash);
+                            
+                            statusDiv.innerHTML = '<span style="color: #eab308;">Transaction submitted. Waiting for network confirmation...</span><br>Tx: ' + tx.hash;
+                            btn.innerText = "Mining...";
+                            
+                            await tx.wait();
+                            
+                            statusDiv.innerHTML = '<span style="color: #4ade80;">✓ Signed and Mined successfully! Saving to database...</span>';
+                            
+                            // 4. Send the output Tx Hash back to Django Backend
+                            const response = await fetch('/invoices/save_blockchain_record/', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    invoice_id: {{ blockchain_pending_data.invoice_id }},
+                                    tx_hash: tx.hash,
+                                    document_hash: docHash
+                                })
+                            });
+
+                            const result = await response.json();
+                            if(result.status === "success") {
+                                statusDiv.innerHTML = '<strong style="color: #4ade80; font-size: 16px;">✓ Total Verification Complete.</strong><br>Check the dashboard for your permanent transaction record!';
+                                btn.innerText = "Verified ✅";
+                            } else {
+                                statusDiv.innerHTML = '<span style="color: #ef4444;">Failed to save record to local database: ' + result.message + '</span>';
+                            }
+                            
+                        } catch (err) {
+                            console.error(err);
+                            statusDiv.innerHTML = '<span style="color: #ef4444;">Error: ' + err.message + '</span>';
+                            btn.disabled = false;
+                            btn.innerText = "Sign with MetaMask";
+                        }
+                    });
+                </script>
             </div>
             {% endif %}
 
