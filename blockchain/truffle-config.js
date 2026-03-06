@@ -41,10 +41,18 @@
  * https://trufflesuite.com/docs/truffle/getting-started/using-the-truffle-dashboard/
  */
 
-// require('dotenv').config();
-// const { MNEMONIC, PROJECT_ID } = process.env;
+try {
+  require('dotenv').config();
+} catch (err) {
+  // dotenv is optional until deployment tooling is installed.
+}
 
-// const HDWalletProvider = require('@truffle/hdwallet-provider');
+let HDWalletProvider;
+try {
+  HDWalletProvider = require('@truffle/hdwallet-provider');
+} catch (err) {
+  HDWalletProvider = null;
+}
 
 module.exports = {
   /**
@@ -66,8 +74,33 @@ module.exports = {
     //
     development: {
      host: "127.0.0.1",     // Localhost (default: none)
-     port: 7545,            // Standard Ethereum port (default: none)
+     port: 7545,             // Standard Ethereum port (default: none)
      network_id: "*",       // Any network (default: none)
+    },
+    sepolia: {
+      provider: () => {
+        if (!HDWalletProvider) {
+          throw new Error("@truffle/hdwallet-provider is not installed. Run: npm install --save-dev @truffle/hdwallet-provider dotenv");
+        }
+
+        const rpcUrl = process.env.ALCHEMY_SEPOLIA_URL || process.env.BLOCKCHAIN_RPC_URL;
+        const privateKey = process.env.DEPLOYER_PRIVATE_KEY || process.env.BLOCKCHAIN_SIGNER_PRIVATE_KEY;
+
+        if (!rpcUrl || !privateKey) {
+          throw new Error(
+            "Missing ALCHEMY_SEPOLIA_URL/BLOCKCHAIN_RPC_URL or DEPLOYER_PRIVATE_KEY/BLOCKCHAIN_SIGNER_PRIVATE_KEY in blockchain/.env"
+          );
+        }
+
+        return new HDWalletProvider({
+          privateKeys: [privateKey],
+          providerOrUrl: rpcUrl,
+        });
+      },
+      network_id: 11155111,
+      confirmations: 2,
+      timeoutBlocks: 200,
+      skipDryRun: true,
     },
     //
     // An additional network, but with some advanced options…
