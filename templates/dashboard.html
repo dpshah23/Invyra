@@ -1,11 +1,240 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Dashboard | Invyra</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" type="image/x-icon" sizes="16x16" href="/static/Images/Invyra Favicon.png">
+
 </head>
+
 <body>
-    
+
+    <header>
+
+        <div class="logo">
+            <a href=""><img src="/static/Images/Invyra Logo.png" alt="Invyra Logo"></a>
+        </div>
+
+        <nav>
+        
+            <button class="nav-btn active" data-page="dashboard">Dashboard</button>
+            <button class="nav-btn" data-page="invoices">All Invoices</button>
+        
+        </nav>
+
+        <div class="status">
+            <button class="upload-btn" id="uploadHeaderBtn">Upload Invoice</button>
+        </div>
+
+    </header>
+
+    <main>
+
+        <!-- DASHBOARD -->
+
+        <section id="dashboard" class="page active">
+
+            <div class="cards">
+
+                <div class="card">
+                    <h4>Total Invoices</h4>
+                    <h2>8</h2>
+                    <p class="green">12% from last month</p>
+                </div>
+
+                <div class="card">
+                    <h4>Amount Saved</h4>
+                    <h2>$98,100.25</h2>
+                    <p>Prevented fraudulent payments</p>
+                </div>
+
+                <div class="card">
+                    <h4>Fraud Detection Rate</h4>
+                    <h2>50%</h2>
+                    <p class="red">4 flagged/rejected</p>
+                </div>
+
+                <div class="card">
+                    <h4>Avg Risk Score</h4>
+                    <h2>49/100</h2>
+                    <p class="green">8% lower than last month</p>
+                </div>
+
+            </div>
+
+            <div class="charts">
+
+                <div class="chart">
+                    <h3>Invoice Processing Trends</h3>
+                    <canvas id="trendChart"></canvas>
+                </div>
+
+                <div class="chart">
+                    <h3>Risk Distribution</h3>
+                    <canvas id="riskChart"></canvas>
+                </div>
+
+            </div>
+
+            <div class="chart full">
+                <h3>Fraud Types Detected</h3>
+                <canvas id="fraudChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="riskChart"></canvas>
+            </div>
+
+            <div class="recent">
+
+                <h3>Recent Invoices</h3>
+
+                <div class="invoice-row">
+                    <div>
+                        <h4>Acme Supplies Inc.</h4>
+                        <p>INV-2026-0341 • $15,240.5</p>
+                    </div>
+                    <span class="badge green">Approved</span>
+                    <button>View Details</button>
+                </div>
+
+                <div class="invoice-row">
+                    <div>
+                        <h4>TechPro Solutions</h4>
+                        <p>INV-2026-0342 • $45,000</p>
+                    </div>
+                    <span class="badge orange">Flagged</span>
+                    <button>View Details</button>
+                </div>
+
+                <div class="invoice-row">
+                    <div>
+                        <h4>Global Logistics Ltd.</h4>
+                        <p>INV-2026-0298 • $8,750.25</p>
+                    </div>
+                    <span class="badge red">Rejected</span>
+                    <button>View Details</button>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- ALL INVOICES -->
+
+        <section id="invoices" class="page">
+
+            <h2>All Invoices</h2>
+            <p>View and manage all uploaded invoices</p>
+
+            <div class="search-bar">
+
+                <input type="text" placeholder="Search by vendor, invoice number, or description">
+
+                <select>
+                    <option>Status</option>
+                    <option>Approved</option>
+                    <option>Flagged</option>
+                    <option>Rejected</option>
+                </select>
+
+                <select>
+                    <option>Risk Level</option>
+                    <option>Low</option>
+                    <option>Medium</option>
+                    <option>High</option>
+                </select>
+
+            </div>
+
+            <div class="invoice-list">
+
+                <div class="invoice-row">
+                    <div>
+                        <h4>Acme Supplies Inc.</h4>
+                        <p>INV-2026-0341 • $15,240.5</p>
+                    </div>
+                    <span class="badge green">Approved</span>
+                    <button>View Details</button>
+                </div>
+
+                <div class="invoice-row">
+                    <div>
+                        <h4>TechPro Solutions</h4>
+                        <p>INV-2026-0342 • $45,000</p>
+                    </div>
+                    <span class="badge orange">Flagged</span>
+                    <button>View Details</button>
+                </div>
+
+                <div class="invoice-row">
+                    <div>
+                        <h4>Global Logistics Ltd.</h4>
+                        <p>INV-2026-0298 • $8,750.25</p>
+                    </div>
+                    <span class="badge red">Rejected</span>
+                    <button>View Details</button>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- UPLOAD PAGE -->
+
+        <section id="upload" class="page">
+
+            <h2>Upload Invoice for Verification</h2>
+
+            <p>Upload vendor invoices to automatically detect fraud and verify authenticity</p>
+
+            <div class="upload-box">
+
+                <div class="upload-area">
+
+                    <h2>Drop your invoice here</h2>
+                    <p>or click to browse</p>
+
+                    <input type="file" id="fileInput" hidden accept=".pdf,.png,.jpg,.jpeg">
+
+                    <button id="selectBtn">Select File</button>
+                    <p id="fileName"></p>
+
+                </div>
+
+            </div>
+
+            <div class="features">
+
+                <div class="feature">
+                    <h4>Auto-Extraction</h4>
+                    <p>Automatically extract invoice details using AI</p>
+                </div>
+
+                <div class="feature">
+                    <h4>Fraud Detection</h4>
+                    <p>Detect duplicates, tampering, and suspicious patterns</p>
+                </div>
+
+                <div class="feature">
+                    <h4>Blockchain Proof</h4>
+                    <p>Immutable verification stored on blockchain</p>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="/static/js/dashboard.js"></script>
+
 </body>
+
 </html>
