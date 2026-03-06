@@ -74,7 +74,7 @@ module.exports = {
     //
     development: {
      host: "127.0.0.1",     // Localhost (default: none)
-     port: 7545,             // Standard Ethereum port (default: none)
+      port: Number(process.env.GANACHE_PORT || 8545),             // Ganache CLI default port
      network_id: "*",       // Any network (default: none)
     },
     sepolia: {
