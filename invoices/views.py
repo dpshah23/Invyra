@@ -7,7 +7,7 @@ import pytesseract
 from PIL import Image, ImageOps
 from pytesseract import Output
 
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.test import Client
 from django.urls import reverse
 
@@ -47,11 +47,35 @@ def _sorted_lines(tokens, y_tolerance=12):
     return sorted(lines, key=lambda item: item["y"])
 
 
+from PIL import Image, ImageOps, ImageEnhance, ImageFilter
+
 def _ocr_extract_with_coordinates(uploaded_file):
     image = Image.open(uploaded_file)
+    
+    # Standardize image mode
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+        
+    # Convert to grayscale
     image = ImageOps.grayscale(image)
+    
+    # Increase image contrast to make text stand out against background
+    enhancer_contrast = ImageEnhance.Contrast(image)
+    image = enhancer_contrast.enhance(2.0)
+    
+    # Increase image sharpness
+    enhancer_sharpness = ImageEnhance.Sharpness(image)
+    image = enhancer_sharpness.enhance(1.5)
+    
+    # Apply a manual threshold to binarize the image (remove gray shadows)
+    # Any pixel > 140 becomes pure white, <= 140 becomes pure black
+    image = image.point(lambda p: 255 if p > 140 else 0, mode='1')
 
-    data = pytesseract.image_to_data(image, output_type=Output.DICT)
+    # Use Page Segmentation Mode 6 (Assume a single uniform block of text)
+    # which performs much better on sparse tables/invoices than the default PSM 3.
+    custom_config = r'--oem 3 --psm 6'
+    data = pytesseract.image_to_data(image, output_type=Output.DICT, config=custom_config)
+    
     tokens = []
     confidences = []
 
@@ -206,17 +230,22 @@ def invoice_upload(request):
     is_guest = not username
     
     if request.method == "GET":
+        if not is_guest:
+            from auth1.views import get_dashboard_context
+            dashboard_context = get_dashboard_context(username)
+            plan_limit = int(request.session.get("plan_limit", 10))
+            user_invoice_count = dashboard_context["total_invoices"]
+            dashboard_context["plan_limit"] = plan_limit
+            dashboard_context["invoice_count"] = user_invoice_count
+            dashboard_context["remaining_uploads"] = max(0, plan_limit - user_invoice_count)
+            dashboard_context["name"] = request.session.get('name', '')
+            dashboard_context["active_tab"] = "upload"
+            return render(request, "dashboard.html", dashboard_context)
+            
         context = {
             "is_guest": is_guest,
             "guest_upload_limit_reached": False
         }
-        # Show plan limit info to logged-in users
-        if not is_guest:
-            plan_limit = request.session.get("plan_limit", 10)
-            user_invoice_count = invoices.objects.filter(username=username).count()
-            context["plan_limit"] = plan_limit
-            context["invoice_count"] = user_invoice_count
-            context["remaining_uploads"] = max(0, plan_limit - user_invoice_count)
         return render(request, "invoice_upload.html", context)
     
     # Guest upload limit: max 1 invoice per guest session
@@ -230,18 +259,20 @@ def invoice_upload(request):
             })
     else:
         # Logged-in user: check plan limit
-        plan_limit = request.session.get("plan_limit", 10)
+        from auth1.views import get_dashboard_context
+        plan_limit = int(request.session.get("plan_limit", 10))
         user_invoice_count = invoices.objects.filter(username=username).count()
         
         if user_invoice_count >= plan_limit:
-            return render(request, "invoice_upload.html", {
-                "error": f"You have reached your plan limit of {plan_limit} invoices. Please upgrade your plan to upload more.",
-                "plan_limit_reached": True,
-                "is_guest": is_guest,
-                "plan_limit": plan_limit,
-                "invoice_count": user_invoice_count,
-                "remaining_uploads": 0
-            })
+            dashboard_context = get_dashboard_context(username)
+            dashboard_context["error"] = f"You have reached your plan limit of {plan_limit} invoices. Please upgrade your plan to upload more."
+            dashboard_context["plan_limit_reached"] = True
+            dashboard_context["active_tab"] = "upload"
+            dashboard_context["plan_limit"] = plan_limit
+            dashboard_context["invoice_count"] = user_invoice_count
+            dashboard_context["remaining_uploads"] = 0
+            dashboard_context["name"] = request.session.get('name', '')
+            return render(request, "dashboard.html", dashboard_context)
 
     file = request.FILES.get("invoice")
     if not file:
@@ -353,36 +384,87 @@ def invoice_upload(request):
     except Exception as e:
         blockchain_error = str(e)
 
-    context = {
-        "ocr_text": extracted["raw_text"],
-        "extracted_json": json.dumps(
-            {
-                "invoice_number": invoice_number,
-                "vendor_name": extracted["vendor_name"],
-                "invoice_date": extracted["invoice_date"].isoformat() if extracted["invoice_date"] else None,
-                "due_date": extracted["due_date"].isoformat() if extracted["due_date"] else None,
-                "total_amount": str(extracted["total_amount"]),
-                "currency": extracted["currency"],
-                "bank_account": extracted["bank_account"],
-                "ocr_confidence": extracted["ocr_confidence"],
-            },
-            indent=2,
-        ),
-        "risk_result": risk_call["data"],
-        "invoice_obj": invoice_obj,
-        "risk_error": None if risk_call["ok"] else risk_call["data"],
-        "blockchain_result": blockchain_result,
-        "blockchain_error": blockchain_error,
-        "is_guest": is_guest,
-    }
-    
     # Add plan limit info for logged-in users
     if not is_guest:
-        plan_limit = request.session.get("plan_limit", 10)
-        user_invoice_count = invoices.objects.filter(username=username).count()
-        context["plan_limit"] = plan_limit
-        context["invoice_count"] = user_invoice_count
-        context["remaining_uploads"] = max(0, plan_limit - user_invoice_count)
+        from auth1.views import get_dashboard_context
+        # Render the dashboard with upload results
+        dashboard_context = get_dashboard_context(username)
+        dashboard_context.update({
+            "ocr_text": extracted["raw_text"],
+            "extracted_json": json.dumps(
+                {
+                    "invoice_number": invoice_number,
+                    "vendor_name": extracted["vendor_name"],
+                    "invoice_date": extracted["invoice_date"].isoformat() if extracted["invoice_date"] else None,
+                    "due_date": extracted["due_date"].isoformat() if extracted["due_date"] else None,
+                    "total_amount": str(extracted["total_amount"]),
+                    "currency": extracted["currency"],
+                    "bank_account": extracted["bank_account"],
+                    "ocr_confidence": extracted["ocr_confidence"],
+                },
+                indent=2,
+            ),
+            "risk_result": risk_call["data"],
+            "invoice_obj": invoice_obj,
+            "risk_error": None if risk_call["ok"] else risk_call["data"],
+            "blockchain_result": blockchain_result,
+            "blockchain_error": blockchain_error,
+            "is_guest": is_guest,
+            "active_tab": "upload"
+        })
+        
+        plan_limit = int(request.session.get("plan_limit", 10))
+        user_invoice_count = dashboard_context["total_invoices"]
+        dashboard_context["plan_limit"] = plan_limit
+        dashboard_context["invoice_count"] = user_invoice_count
+        dashboard_context["remaining_uploads"] = max(0, plan_limit - user_invoice_count)
+        dashboard_context["name"] = request.session.get('name', '')
+        
+        return render(request, "dashboard.html", dashboard_context)
+    else:
+        # Fallback for guests: still render the standalone page
+        context = {
+            "ocr_text": extracted["raw_text"],
+            "extracted_json": json.dumps(
+                {
+                    "invoice_number": invoice_number,
+                    "vendor_name": extracted["vendor_name"],
+                    "invoice_date": extracted["invoice_date"].isoformat() if extracted["invoice_date"] else None,
+                    "due_date": extracted["due_date"].isoformat() if extracted["due_date"] else None,
+                    "total_amount": str(extracted["total_amount"]),
+                    "currency": extracted["currency"],
+                    "bank_account": extracted["bank_account"],
+                    "ocr_confidence": extracted["ocr_confidence"],
+                },
+                indent=2,
+            ),
+            "risk_result": risk_call["data"],
+            "invoice_obj": invoice_obj,
+            "risk_error": None if risk_call["ok"] else risk_call["data"],
+            "blockchain_result": blockchain_result,
+            "blockchain_error": blockchain_error,
+            "is_guest": is_guest,
+        }
+        return render(request, "invoice_upload.html", context)
+
+def invoice_detail(request, invoice_id):
+    username = request.session.get("username", "")
+    is_guest = not username
     
-    return render(request, "invoice_upload.html", context)
+    if is_guest:
+        guest_session_id = request.session.get("guest_session_id", "")
+        if not guest_session_id:
+            return redirect('/auth/login/')
+        invoice_obj = get_object_or_404(invoices, id=invoice_id, guest_session_id=guest_session_id)
+    else:
+        invoice_obj = get_object_or_404(invoices, id=invoice_id, username=username)
+
+    bc_record = blockchain_records.objects.filter(invoice_id=invoice_obj).first()
+
+    context = {
+        'invoice': invoice_obj,
+        'blockchain_record': bc_record,
+        'extracted_json': json.dumps(invoice_obj.extracted_json, indent=2) if invoice_obj.extracted_json else None
+    }
+    return render(request, 'invoice_details.html', context)
         

@@ -45,26 +45,26 @@
 
                 <div class="card">
                     <h4>Total Invoices</h4>
-                    <h2>8</h2>
-                    <p class="green">12% from last month</p>
+                    <h2>{{ total_invoices }}</h2>
+                    <p class="green">Active documents</p>
                 </div>
 
                 <div class="card">
                     <h4>Amount Saved</h4>
-                    <h2>$98,100.25</h2>
+                    <h2>${{ amount_saved|floatformat:2 }}</h2>
                     <p>Prevented fraudulent payments</p>
                 </div>
 
                 <div class="card">
                     <h4>Fraud Detection Rate</h4>
-                    <h2>50%</h2>
-                    <p class="red">4 flagged/rejected</p>
+                    <h2>{{ fraud_rate }}%</h2>
+                    <p class="red">{{ fraud_count }} flagged/rejected</p>
                 </div>
 
                 <div class="card">
                     <h4>Avg Risk Score</h4>
-                    <h2>49/100</h2>
-                    <p class="green">8% lower than last month</p>
+                    <h2>{{ avg_risk_score }}/100</h2>
+                    <p class="green">Based on AI models</p>
                 </div>
 
             </div>
@@ -96,32 +96,26 @@
 
                 <h3>Recent Invoices</h3>
 
+                {% for invoice in recent_invoices %}
                 <div class="invoice-row">
                     <div>
-                        <h4>Acme Supplies Inc.</h4>
-                        <p>INV-2026-0341 • $15,240.5</p>
+                        <h4>{{ invoice.vendor_name|default:"Unknown Vendor" }}</h4>
+                        <p>{{ invoice.invoice_number }} • {{ invoice.currency }} {{ invoice.amount }}</p>
                     </div>
-                    <span class="badge green">Approved</span>
-                    <button>View Details</button>
+                    {% if invoice.status == 'processed' or invoice.status == 'blockchain_recorded' %}
+                        <span class="badge green">Processed</span>
+                    {% elif invoice.status == 'flagged' %}
+                        <span class="badge orange">Flagged</span>
+                    {% elif invoice.status == 'rejected' %}
+                        <span class="badge red">Rejected</span>
+                    {% else %}
+                        <span class="badge">{{ invoice.status|title }}</span>
+                    {% endif %}
+                    <a href="/invoices/{{ invoice.id }}/" style="text-decoration: none;"><button type="button">View Details</button></a>
                 </div>
-
-                <div class="invoice-row">
-                    <div>
-                        <h4>TechPro Solutions</h4>
-                        <p>INV-2026-0342 • $45,000</p>
-                    </div>
-                    <span class="badge orange">Flagged</span>
-                    <button>View Details</button>
-                </div>
-
-                <div class="invoice-row">
-                    <div>
-                        <h4>Global Logistics Ltd.</h4>
-                        <p>INV-2026-0298 • $8,750.25</p>
-                    </div>
-                    <span class="badge red">Rejected</span>
-                    <button>View Details</button>
-                </div>
+                {% empty %}
+                <p>No recent invoices found.</p>
+                {% endfor %}
 
             </div>
 
@@ -156,32 +150,26 @@
 
             <div class="invoice-list">
 
+                {% for invoice in all_invoices %}
                 <div class="invoice-row">
                     <div>
-                        <h4>Acme Supplies Inc.</h4>
-                        <p>INV-2026-0341 • $15,240.5</p>
+                        <h4>{{ invoice.vendor_name|default:"Unknown Vendor" }}</h4>
+                        <p>{{ invoice.invoice_number }} • {{ invoice.currency }} {{ invoice.amount }}</p>
                     </div>
-                    <span class="badge green">Approved</span>
-                    <button>View Details</button>
+                    {% if invoice.status == 'processed' or invoice.status == 'blockchain_recorded' %}
+                        <span class="badge green">Processed</span>
+                    {% elif invoice.status == 'flagged' %}
+                        <span class="badge orange">Flagged</span>
+                    {% elif invoice.status == 'rejected' %}
+                        <span class="badge red">Rejected</span>
+                    {% else %}
+                        <span class="badge">{{ invoice.status|title }}</span>
+                    {% endif %}
+                    <a href="/invoices/{{ invoice.id }}/" style="text-decoration: none;"><button type="button">View Details</button></a>
                 </div>
-
-                <div class="invoice-row">
-                    <div>
-                        <h4>TechPro Solutions</h4>
-                        <p>INV-2026-0342 • $45,000</p>
-                    </div>
-                    <span class="badge orange">Flagged</span>
-                    <button>View Details</button>
-                </div>
-
-                <div class="invoice-row">
-                    <div>
-                        <h4>Global Logistics Ltd.</h4>
-                        <p>INV-2026-0298 • $8,750.25</p>
-                    </div>
-                    <span class="badge red">Rejected</span>
-                    <button>View Details</button>
-                </div>
+                {% empty %}
+                <p>No invoices found.</p>
+                {% endfor %}
 
             </div>
 
@@ -195,45 +183,118 @@
 
             <p>Upload vendor invoices to automatically detect fraud and verify authenticity</p>
 
-            <div class="upload-box">
+            <div class="upload-box" style="margin-bottom: 24px;">
 
-                <div class="upload-area">
-
-                    <h2>Drop your invoice here</h2>
-                    <p>or click to browse</p>
-
-                    <input type="file" id="fileInput" hidden accept=".pdf,.png,.jpg,.jpeg">
-
-                    <button id="selectBtn">Select File</button>
-                    <p id="fileName"></p>
-
+                {% if error %}
+                <div style="color: #fecaca; background: #7f1d1d; border: 1px solid #ef4444; padding: 10px; border-radius: 8px; margin-bottom: 16px;">
+                    {{ error }}
+                    {% if plan_limit_reached %}
+                    <br><br>
+                    <a href="/subscriptions/pricing/" style="color: #fecaca; font-weight: bold;">Upgrade Your Plan</a> to upload more invoices.
+                    {% endif %}
                 </div>
+                {% endif %}
+                
+                {% if plan_limit %}
+                <div style="color: #dcfce7; background: #14532d; border: 1px solid #22c55e; padding: 10px; border-radius: 8px; margin-bottom: 16px;">
+                    <strong>Your Plan:</strong> {{ invoice_count }}/{{ plan_limit }} invoices uploaded
+                    {% if remaining_uploads > 0 %}
+                    ({{ remaining_uploads }} remaining)
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <form method="post" action="/invoices/upload/" enctype="multipart/form-data" id="uploadForm">
+                    {% csrf_token %}
+                    <div class="upload-area">
+
+                        <h2>Drop your invoice here</h2>
+                        <p>or click to browse</p>
+
+                        <input type="file" id="fileInput" name="invoice" hidden accept=".pdf,.png,.jpg,.jpeg" required>
+
+                        <button type="button" id="selectBtn">Select File</button>
+                        <p id="fileName" style="margin-top: 10px; font-size: 14px; color: #555;"></p>
+                        
+                        <button type="submit" id="submitBtn" style="display: none; background: #16a34a; margin-top: 20px;">Process Invoice</button>
+
+                    </div>
+                </form>
 
             </div>
-
-            <div class="features">
-
-                <div class="feature">
-                    <h4>Auto-Extraction</h4>
-                    <p>Automatically extract invoice details using AI</p>
-                </div>
-
-                <div class="feature">
-                    <h4>Fraud Detection</h4>
-                    <p>Detect duplicates, tampering, and suspicious patterns</p>
-                </div>
-
-                <div class="feature">
-                    <h4>Blockchain Proof</h4>
-                    <p>Immutable verification stored on blockchain</p>
-                </div>
-
+            
+            <!-- OCR Results Display -->
+            {% if invoice_obj %}
+            <div style="color: #dcfce7; background: #14532d; border: 1px solid #22c55e; padding: 15px; border-radius: 8px; margin-bottom: 18px;">
+                <strong>✓ Successfully Saved Invoice</strong><br><br>
+                <strong>Invoice Number:</strong> {{ invoice_obj.invoice_number }}<br>
+                <strong>Status:</strong> {{ invoice_obj.status }}<br>
+                <strong>Risk:</strong> {{ invoice_obj.risk_label }} ({{ invoice_obj.risk_score }})
             </div>
+            {% endif %}
+
+            {% if extracted_json %}
+            <div class="recent" style="margin-bottom: 18px;">
+                <h3>Normalized JSON Extraction</h3>
+                <pre style="white-space: pre-wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; overflow-x: auto; color: #334155;">{{ extracted_json }}</pre>
+            </div>
+            {% endif %}
+
+            {% if risk_result %}
+            <div class="recent" style="margin-bottom: 18px;">
+                <h3>Fraud Detection Response</h3>
+                <pre style="white-space: pre-wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; overflow-x: auto; color: #334155;">{{ risk_result }}</pre>
+            </div>
+            {% endif %}
+
+            {% if blockchain_result %}
+            <div class="recent" style="margin-bottom: 18px; border: 2px solid {% if blockchain_result.success %}#22c55e{% else %}#ef4444{% endif %};">
+                <h3>🔗 Blockchain Record</h3>
+                {% if blockchain_result.success %}
+                    <strong style="color: #16a34a;">✓ Transaction Successful</strong><br><br>
+                    <strong>Transaction Hash:</strong> <code style="background: #e2e8f0; padding: 2px 5px; border-radius: 4px;">{{ blockchain_result.tx_hash }}</code><br>
+                    <strong>Document Hash:</strong> <code style="background: #e2e8f0; padding: 2px 5px; border-radius: 4px;">{{ blockchain_result.document_hash }}</code><br>
+                    <strong>Block Number:</strong> {{ blockchain_result.block_number }}<br>
+                    <strong>Gas Used:</strong> {{ blockchain_result.gas_used }}<br><br>
+                    <span style="color: #64748b; font-size: 14px;">Invoice fingerprint permanently recorded on blockchain for tamper detection.</span>
+                {% else %}
+                    <strong style="color: #dc2626;">✗ Blockchain Recording Failed</strong><br><br>
+                    <strong>Error:</strong> {{ blockchain_result.error }}<br>
+                    <strong>Document Hash:</strong> <code style="background: #e2e8f0; padding: 2px 5px; border-radius: 4px;">{{ blockchain_result.document_hash }}</code>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if blockchain_error %}
+            <div class="recent" style="margin-bottom: 18px; border: 2px solid #ef4444;">
+                <h3 style="color: #dc2626;">⚠ Blockchain Error</h3>
+                <pre style="white-space: pre-wrap; background: #fef2f2; color: #991b1b; padding: 12px; border-radius: 8px;">{{ blockchain_error }}</pre>
+            </div>
+            {% endif %}
 
         </section>
 
     </main>
 
+    <script>
+        {% if active_tab %}
+        window.activeTab = "{{ active_tab }}";
+        {% else %}
+        window.activeTab = "dashboard";
+        {% endif %}
+
+        // Initialize dynamic chart data from Django context
+        window.chartData = {
+            risk_labels: {{ risk_labels|default:"[]"|safe }},
+            risk_data: {{ risk_data|default:"[]"|safe }},
+            fraud_labels: {{ fraud_labels|default:"[]"|safe }},
+            fraud_data: {{ fraud_data|default:"[]"|safe }},
+            trend_labels: {{ trend_labels|default:"[]"|safe }},
+            trend_processed: {{ trend_processed|default:"[]"|safe }},
+            trend_flagged: {{ trend_flagged|default:"[]"|safe }},
+            trend_rejected: {{ trend_rejected|default:"[]"|safe }}
+        };
+    </script>
     <script src="/static/js/dashboard.js"></script>
 
 </body>

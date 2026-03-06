@@ -3,4 +3,5 @@ from . import views
 
 urlpatterns = [
 	path('upload/', views.invoice_upload, name='invoice_upload'),
+    path('<int:invoice_id>/', views.invoice_detail, name='invoice_detail'),
 ]
