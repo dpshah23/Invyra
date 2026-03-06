@@ -4,7 +4,8 @@ from django.db import models
 
 
 class invoices(models.Model):
-    username = models.CharField(max_length=150, db_index=True)
+    username = models.CharField(max_length=150, db_index=True, blank=True, default="")
+    guest_session_id = models.CharField(max_length=50, db_index=True, blank=True, default="")
     invoice_number = models.CharField(max_length=100)
     vendor_name = models.CharField(max_length=255, blank=True, default="")
     invoice_date = models.DateField(blank=True, null=True)

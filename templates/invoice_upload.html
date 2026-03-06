@@ -64,6 +64,14 @@
         <div class="card">
             <h2>Upload Invoice (OCR Pipeline)</h2>
             <p>Flow: OCR -> field extraction -> normalized JSON -> fraud_detection POST -> DB storage.</p>
+            
+            {% if is_guest %}
+            <div class="ok" style="margin-bottom: 12px;">
+                <strong>Guest Mode:</strong> As a guest, you can upload 1 invoice to preview our fraud detection. <br>
+                <a href="/auth/signup/" style="color: #e0f2fe; font-weight: bold;">Sign up for free</a> to upload more invoices and save them permanently.
+            </div>
+            {% endif %}
+            
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="file" name="invoice" accept="image/png,image/jpeg,image/jpg" required>
@@ -73,7 +81,14 @@
         </div>
 
         {% if error %}
-        <div class="card error">{{ error }}</div>
+        <div class="card error">
+            {{ error }}
+            {% if guest_upload_limit_reached %}
+            <br><br>
+            <a href="/auth/login/" style="color: #fecaca; font-weight: bold;">Sign In</a> or 
+            <a href="/auth/signup/" style="color: #fecaca; font-weight: bold;">Create Account</a> to upload more invoices.
+            {% endif %}
+        </div>
         {% endif %}
 
         {% if invoice_obj %}

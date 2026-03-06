@@ -1,6 +1,7 @@
 from django.shortcuts import render,redirect
 
 from auth1.models import UserCustom as User
+from invoices.models import invoices
 from django.utils import timezone
 from datetime import timedelta
 from django_ratelimit.decorators import ratelimit
@@ -94,6 +95,15 @@ def signup(request):
         user = User(username=username, email=email, name=name, lst_login=None, company_name=compname)
         user.set_password(password)
         user.save()
+        
+        # Migrate guest invoices to newly registered user (if any)
+        guest_session_id = request.session.get('guest_session_id')
+        if guest_session_id:
+            invoices.objects.filter(guest_session_id=guest_session_id).update(
+                username=username,
+                guest_session_id=""  # Clear guest session ID
+            )
+        
         return render(request, 'login.html', {'success': 'Account created. Please sign in.'})
 
     return render(request,'login.html')
@@ -126,6 +136,14 @@ def login(request):
             session['username'] = user.username
             session['email'] = user.email
             session['name'] = user.name
+            
+            # Migrate any guest invoices to this newly logged-in user
+            old_guest_session_id = request.session.get('guest_session_id')
+            if old_guest_session_id:
+                invoices.objects.filter(guest_session_id=old_guest_session_id).update(
+                    username=user.username,
+                    guest_session_id=""  # Clear guest session ID
+                )
 
             # Get the user's subscription
             try:
@@ -158,6 +176,12 @@ def login(request):
             # Update last login time
             user.lst_login = timezone.now()
             user.save()
+            
+            # Clear guest session ID after migration
+            if 'guest_session_id' in session:
+                del session['guest_session_id']
+            if 'is_guest' in session:
+                del session['is_guest']
 
             redirect_path = request.session.pop('post_login_next', '')
             if redirect_path.startswith('/'):

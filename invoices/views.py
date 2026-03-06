@@ -201,35 +201,59 @@ def _call_detect_risk_api(request, payload):
 
 
 def invoice_upload(request):
-    if not request.session.get("username"):
-        return redirect(f"/auth/login/?next={reverse('invoice_upload')}")
-
+    username = request.session.get("username", "")
+    guest_session_id = request.session.get("guest_session_id", "")
+    is_guest = not username
+    
     if request.method == "GET":
-        return render(request, "invoice_upload.html")
+        return render(request, "invoice_upload.html", {
+            "is_guest": is_guest,
+            "guest_upload_limit_reached": False
+        })
+    
+    # Guest upload limit: max 1 invoice per guest session
+    if is_guest:
+        guest_invoice_count = invoices.objects.filter(guest_session_id=guest_session_id).count()
+        if guest_invoice_count >= 1:
+            return render(request, "invoice_upload.html", {
+                "error": "Guest users can upload a maximum of 1 invoice. Please sign in to upload more.",
+                "guest_upload_limit_reached": True,
+                "is_guest": is_guest
+            })
 
     file = request.FILES.get("invoice")
     if not file:
-        return render(request, "invoice_upload.html", {"error": "Please upload an invoice image."})
+        return render(request, "invoice_upload.html", {
+            "error": "Please upload an invoice image.",
+            "is_guest": is_guest
+        })
 
     if file.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
         return render(
             request,
             "invoice_upload.html",
-            {"error": "Only JPG/PNG image invoices are supported in this OCR flow."},
+            {
+                "error": "Only JPG/PNG image invoices are supported in this OCR flow.",
+                "is_guest": is_guest
+            },
         )
 
     try:
         ocr_result = _ocr_extract_with_coordinates(file)
     except Exception as exc:
-        return render(request, "invoice_upload.html", {"error": f"OCR failed: {str(exc)}"})
+        return render(request, "invoice_upload.html", {
+            "error": f"OCR failed: {str(exc)}",
+            "is_guest": is_guest
+        })
 
     extracted = _detect_invoice_fields(ocr_result)
-    username = request.session.get("username", "")
 
     invoice_number = extracted["invoice_number"] or f"AUTO-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
 
+    # For guest users, store guest_session_id; for logged-in users, store username
     invoice_obj = invoices.objects.create(
-        username=username,
+        username=username if not is_guest else "",
+        guest_session_id=guest_session_id if is_guest else "",
         invoice_number=invoice_number,
         vendor_name=extracted["vendor_name"],
         invoice_date=extracted["invoice_date"],
@@ -327,6 +351,7 @@ def invoice_upload(request):
         "risk_error": None if risk_call["ok"] else risk_call["data"],
         "blockchain_result": blockchain_result,
         "blockchain_error": blockchain_error,
+        "is_guest": is_guest,
     }
     return render(request, "invoice_upload.html", context)
         
