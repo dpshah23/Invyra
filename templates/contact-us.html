@@ -22,16 +22,26 @@
     
         <nav>
             <ul class="nav-links">
-                <li><a href="#" class="nav-item active">Home</a></li>
-                <li><a href="#" class="nav-item">Dashboard</a></li>
-                <li><a href="#" class="nav-item">About</a></li>
-                <li><a href="#" class="nav-item">Pricing</a></li>
-                <li><a href="#" class="nav-item">Contact</a></li>
-            </ul>
-        </nav>
-    
-        <button class="dashboard-btn">Login</button>
-    
+                <ul class="nav-links">
+          <li><a href="/" class="nav-item active">Home</a></li>
+          {% if request.session.username %}
+            <li><a href="/auth/dashboard/" class="nav-item">Dashboard</a></li>
+          {% else %}
+            <li><a href="/auth/login" class="nav-item">Dashboard</a></li>
+            {% endif %}
+
+          <li><a href="/about_us" class="nav-item">About</a></li>
+          <li><a href="/subscriptions/pricing/" class="nav-item">Pricing</a></li>
+          <li><a href="/contact_us" class="nav-item">Contact</a></li>
+        </ul>
+      </nav>
+
+      {% if request.session.username %}
+      <a href="/auth/logout"><button class="dashboard-btn">Logout</button></a>
+      {% else %}
+            <a href="/auth/login"><button class="dashboard-btn">Login</button></a>
+
+      {% endif %}
     </header>
 
     <div class="container">
@@ -83,10 +93,11 @@
                 <span class="circle one"></span>
                 <span class="circle two"></span>
 
-                <form action="index.html" autocomplete="off">
+                <form action="/contact_us" method="POST" autocomplete="off">
+                    {% csrf_token %}
                     <h3 class="title">Contact us</h3>
                     <div class="input-container">
-                        <input type="text" name="name" class="input" />
+                        <input type="text" name="username" class="input" />
                         <label for="">Username</label>
                         <span>Username</span>
                     </div>
