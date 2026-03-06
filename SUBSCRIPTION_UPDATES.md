@@ -2,7 +2,7 @@
 
 ## Changes Made
 
-### 1. **Sequential Plan Activation**
+### 1. Sequential Plan Activation
 - When a user upgrades/changes plans, the new plan is scheduled to start immediately after the current plan expires
 - If upgrading to the same plan type, it simply extends the current subscription
 - Prevents overlapping subscriptions and duplicate entries
