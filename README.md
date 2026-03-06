@@ -1,7 +1,7 @@
 # 🛡️ Invyra
 ## Smart Invoice Fraud Detection & Blockchain Authentication Platform
 
-> Built with ❤️ during **HackaMinde Hackathon** by Nirma University (March 5-7, 2026)
+> Built with ❤️ during **HackaMined Hackathon** by Nirma University (March 5-7, 2026)
 
 ---
 
@@ -184,8 +184,8 @@ Finance teams in small and medium-sized businesses process **hundreds to thousan
 
 ### 5. **💰 Subscription & Billing**
 - ✅ **Tiered Plans**:
-  - 🟦 **Free**: 1 invoice/month, community support
-  - 🟩 **Pro**: 50 invoices/month, email support, advanced analytics
+  - 🟦 **Free**: 10 invoice/month, community support
+  - 🟩 **Pro**: 1000 invoices/month, email support, advanced analytics
   - 🟪 **Enterprise**: Unlimited invoices, priority support, API access
 - ✅ **Stripe Integration**: Secure payment processing
 - ✅ **Automated Billing**: Monthly subscription management
@@ -1054,7 +1054,7 @@ We welcome contributions! Please follow these steps:
 
 1. **Fork the Repository**
    ```bash
-   git clone https://github.com/yourusername/Invyra.git
+   git clone https://github.com/dpshah23/Invyra.git
    ```
 
 2. **Create Feature Branch**
@@ -1119,7 +1119,7 @@ to use, copy, modify, merge, and/or publish the Software.
 
 ## 👥 Team & Contributors
 
-- **Lead Developer**: Darshan Shah ([@dpshah23](https://github.com/dpshah23))
+- **Lead Developer**: Deep Shah ([@dpshah23](https://github.com/dpshah23))
 - **Architecture**: Full-stack blockchain + AI integration
 - **Contributors**: Welcome!
 
@@ -1129,8 +1129,8 @@ to use, copy, modify, merge, and/or publish the Software.
 
 - **GitHub Repository**: https://github.com/dpshah23/Invyra
 - **Live Demo**: https://invyra.example.com (Coming Soon)
-- **API Documentation**: https://api.invyra.example.com/docs
-- **Blockchain Contract**: https://sepolia.etherscan.io/address/XXXXX
+- **API Documentation**: https://api.invyra.example.com/docs (coming soon)
+- **Blockchain Contract**: https://sepolia.etherscan.io/address/XXXXX (coming soon)
 - **Issue Tracker**: https://github.com/dpshah23/Invyra/issues
 - **Discussions**: https://github.com/dpshah23/Invyra/discussions
 
@@ -1142,7 +1142,7 @@ to use, copy, modify, merge, and/or publish the Software.
 
 **Do NOT** create public GitHub issues for security vulnerabilities.
 
-Email: `security@invyra.example.com` with:
+Email: `dpshah2307@gmail.com` with:
 - Description of vulnerability
 - Steps to reproduce
 - Potential impact
@@ -1154,7 +1154,7 @@ We will acknowledge within 48 hours and provide updates every 5 days.
 
 ## 📞 Support & Contact
 
-- **Email Support**: support@invyra.example.com
+- **Email Support**: dpshah2307@gmail.com
 - **Documentation**: https://docs.invyra.example.com
 - **GitHub Discussions**: https://github.com/dpshah23/Invyra/discussions
 - **Report Bugs**: https://github.com/dpshah23/Invyra/issues

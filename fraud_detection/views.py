@@ -25,19 +25,21 @@ except ImportError:
 
 
 DEFAULT_MODEL_BUNDLE = {
-	"version": "demo-rule-v1",
+	"version": "production-rule-v2",
 	"weights": {
-		"high_amount_flag": 0.45,
-		"missing_vendor_flag": 0.15,
-		"missing_invoice_number_flag": 0.2,
-		"bank_account_suspicious_flag": 0.1,
-		"low_ocr_confidence_flag": 0.1,
-		"duplicate_invoice_number_flag": 0.2,
+		"high_amount_flag": 0.25,
+		"missing_vendor_flag": 0.20,
+		"missing_invoice_number_flag": 0.25,
+		"bank_account_suspicious_flag": 0.30,
+		"low_ocr_confidence_flag": 0.15,
+		"duplicate_invoice_number_flag": 0.90,  # Duplicates are VERY suspicious
+		"amount_anomaly_flag": 0.35,  # Unusual amounts for known vendors
+		"is_new_vendor": 0.18,  # New vendors have inherent risk
 	},
 	"thresholds": {
-		"amount_high": 10000.0,
-		"high": 0.75,
-		"medium": 0.45,
+		"amount_high": 5000.0,  # Lower threshold for high amount detection
+		"high": 0.65,  # More sensitive high-risk threshold
+		"medium": 0.30,  # More sensitive medium-risk threshold
 	},
 }
 
@@ -141,7 +143,11 @@ def _extract_features(payload, model_bundle):
 			if vendor_avg_amount > 0:
 				amount_ratio = float(amount_float / vendor_avg_amount)
 				
-			if amount_ratio >= 3.0 and amount_float > 1000.0:
+			# More sensitive anomaly detection: flag if 2x higher AND over $500
+			if amount_ratio >= 2.0 and amount_float > 500.0:
+				amount_anomaly_flag = 1.0
+			# Or if 5x higher regardless of absolute amount
+			elif amount_ratio >= 5.0:
 				amount_anomaly_flag = 1.0
 				
 			if vendor.last_invoice_date:
@@ -150,6 +156,10 @@ def _extract_features(payload, model_bundle):
 					days_since_last_invoice = float((today - vendor.last_invoice_date).days)
 				except Exception:
 					pass
+	
+	# Even without vendor history, flag very high amounts for new vendors
+	elif amount_float > 10000.0:
+		amount_anomaly_flag = 1.0
 					
 	features.update({
 		"vendor_avg_amount": vendor_avg_amount,
@@ -167,13 +177,24 @@ def _score_from_bundle(features, model_bundle):
 	weights = model_bundle.get("weights", {})
 	thresholds = model_bundle.get("thresholds", {})
 
+	# Calculate base score from weighted features
 	score = 0.0
 	for key, weight in weights.items():
 		score += _to_float(weight) * _to_float(features.get(key, 0.0))
+	
+	# Cap score at 1.0 but allow it to naturally accumulate
 	score = max(0.0, min(1.0, score))
 
-	high_th = _to_float(thresholds.get("high"), 0.75)
-	medium_th = _to_float(thresholds.get("medium"), 0.45)
+	high_th = _to_float(thresholds.get("high"), 0.65)
+	medium_th = _to_float(thresholds.get("medium"), 0.30)
+
+	# Critical override: Duplicates are always high risk
+	if features.get("duplicate_invoice_number_flag", 0) == 1.0:
+		score = max(score, 0.85)  # Force high risk for duplicates
+
+	# High amount + other factor = elevated risk
+	if features.get("high_amount_flag") and (features.get("is_new_vendor") or features.get("bank_account_suspicious_flag")):
+		score = max(score, 0.70)
 
 	if score >= high_th:
 		risk_label = "high"
@@ -182,27 +203,38 @@ def _score_from_bundle(features, model_bundle):
 	else:
 		risk_label = "low"
 
+	# Build detailed reasons
 	reasons = []
-	if features.get("high_amount_flag"):
-		reasons.append("amount is unusually high")
 	if features.get("duplicate_invoice_number_flag"):
-		reasons.append("invoice number appears in previous uploads")
-	if features.get("low_ocr_confidence_flag"):
-		reasons.append("ocr confidence is low")
-	if features.get("missing_vendor_flag"):
-		reasons.append("vendor name is missing")
+		dup_count = int(features.get("duplicate_count", 0))
+		reasons.append(f"CRITICAL: Invoice number already exists ({dup_count} duplicates found)")
+	if features.get("amount_anomaly_flag"):
+		ratio = features.get("amount_ratio", 1.0)
+		reasons.append(f"Amount is {ratio:.1f}x higher than vendor's average")
+	if features.get("high_amount_flag"):
+		amount = features.get("amount", 0)
+		reasons.append(f"High-value invoice (${amount:,.2f})")
+	if features.get("is_new_vendor"):
+		reasons.append("New vendor - no transaction history")
 	if features.get("bank_account_suspicious_flag"):
-		reasons.append("bank account format looks suspicious")
+		reasons.append("Bank account format appears invalid or suspicious")
+	if features.get("low_ocr_confidence_flag"):
+		conf = features.get("ocr_confidence", 0)
+		reasons.append(f"Poor document quality (OCR confidence: {conf:.1%})")
+	if features.get("missing_vendor_flag"):
+		reasons.append("Missing or unrecognized vendor name")
+	if features.get("missing_invoice_number_flag"):
+		reasons.append("Missing invoice number")
 
 	if not reasons:
-		reasons.append("no major fraud indicators found")
+		reasons.append("All verification checks passed - low fraud risk")
 
 	return {
 		"risk_score": round(score, 4),
 		"risk_label": risk_label,
 		"is_fraud": risk_label in {"high", "medium"},
 		"reason": "; ".join(reasons),
-		"model_version": str(model_bundle.get("version", "demo-rule-v1")),
+		"model_version": str(model_bundle.get("version", "production-rule-v2")),
 	}
 
 def _score_from_sklearn(payload, model, features=None):
@@ -314,8 +346,9 @@ def _score_from_sklearn(payload, model, features=None):
 	# Cap score at 1.0 maximum
 	score = min(1.0, score)
 
-	high_th = 0.75
-	medium_th = 0.45
+	# More sensitive thresholds for production use
+	high_th = 0.65
+	medium_th = 0.30
 
 	if score >= high_th:
 		risk_label = "high"

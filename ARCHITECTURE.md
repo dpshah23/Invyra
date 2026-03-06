@@ -4,8 +4,8 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    CLIENT LAYER (Frontend)                   │
-│  HTML5 | CSS3 | JavaScript | Ethers.js (Blockchain UI)     │
+│                    CLIENT LAYER (Frontend)                  │
+│  HTML5 | CSS3 | JavaScript | Ethers.js (Blockchain UI)      │
 │  • Login/Signup Pages                                       │
 │  • Invoice Upload Interface                                 │
 │  • Dashboard & Analytics Views                              │
@@ -14,9 +14,9 @@
                   │ HTTPS/TLS 1.3
                   │
 ┌─────────────────▼───────────────────────────────────────────┐
-│                  API LAYER (Django Backend)                  │
+│                  API LAYER (Django Backend)                 │
 │  Django 5.1.x | Gunicorn WSGI Server | Nginx Reverse Proxy  │
-│                                                              │
+│                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │ Authentication & Authorization (auth1 app)             │ │
 │  │ • User registration & login                            │ │
@@ -24,7 +24,7 @@
 │  │ • Guest session middleware                             │ │
 │  │ • Role-based access control (Free/Pro/Enterprise)      │ │
 │  └────────────────────────────────────────────────────────┘ │
-│                                                              │
+│                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │ Invoice Processing (invoices app)                      │ │
 │  │ • File upload handling & validation                    │ │
@@ -33,7 +33,7 @@
 │  │ • Blockchain integration                               │ │
 │  │ • Invoice model & ORM                                  │ │
 │  └────────────────────────────────────────────────────────┘ │
-│                                                              │
+│                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │ Fraud Detection (fraud_detection app)                  │ │
 │  │ • ML model inference (Scikit-learn)                    │ │
@@ -41,7 +41,7 @@
 │  │ • Risk explanation generation                          │ │
 │  │ • Vendor history analysis                              │ │
 │  └────────────────────────────────────────────────────────┘ │
-│                                                              │
+│                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │ Subscription & Billing (subscriptions app)             │ │
 │  │ • Stripe integration (checkout & webhooks)             │ │
@@ -49,14 +49,14 @@
 │  │ • Usage tracking & limit enforcement                   │ │
 │  │ • Invoice generation                                   │ │
 │  └────────────────────────────────────────────────────────┘ │
-│                                                              │
+│                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
-│  │ Dashboard & Analytics (home app)                       │
+│  │ Dashboard & Analytics (home app)                       │ |
 │  │ • User dashboard rendering                             │ │
 │  │ • Report generation                                    │ │
 │  │ • Public homepage                                      │ │
 │  └────────────────────────────────────────────────────────┘ │
-│                                                              │
+│                                                             │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │ Admin Interface (Django Jazzmin)                       │ │
 │  │ • Content management                                   │ │
