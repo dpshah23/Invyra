@@ -1,7 +1,7 @@
 # 🛡️ InvGuard
 ## Smart Invoice Fraud Detection & Blockchain Authentication Platform
 
-> Built with ❤️ during **Hacked Minds Hackathon** by Nirma University (March 5-7, 2026)
+> Built with ❤️ during **HackaMinde Hackathon** by Nirma University (March 5-7, 2026)
 
 ---
 
