@@ -148,6 +148,8 @@ PK_KEY = os.getenv("PK_KEY", "")
 SK_KEY = os.getenv("SK_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 DOMAIN = os.getenv("DOMAIN", "http://127.0.0.1:8000")
+STRIPE_REQUEST_TIMEOUT_SECONDS = os.getenv("STRIPE_REQUEST_TIMEOUT_SECONDS", "12")
+STRIPE_CHECKOUT_RETRY_COUNT = os.getenv("STRIPE_CHECKOUT_RETRY_COUNT", "1")
 STRIPE_PAYMENT_METHOD_TYPES = [
     item.strip()
     for item in os.getenv("STRIPE_PAYMENT_METHOD_TYPES", "card").split(",")

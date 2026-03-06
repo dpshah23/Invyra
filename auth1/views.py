@@ -2,11 +2,40 @@ from django.shortcuts import render,redirect
 
 from auth1.models import UserCustom as User
 from django.utils import timezone
+from datetime import timedelta
 from django_ratelimit.decorators import ratelimit
+from subscriptions.models import user_subscriptions
 
 # Create your views here.
 
 POST_LOGIN_FALLBACK = '/auth/dashboard/'
+PLAN_PRIORITY = {'free': 1, 'pro': 2, 'enterprise': 3}
+
+
+def _normalize_plan_name(value):
+    return (value or 'free').strip().lower()
+
+
+def _pick_subscription_for_session(username):
+    active_subscriptions = list(
+        user_subscriptions.objects.filter(username=username, status='active')
+    )
+    if active_subscriptions:
+        return max(
+            active_subscriptions,
+            key=lambda sub: (
+                PLAN_PRIORITY.get(_normalize_plan_name(sub.subscription_type), 0),
+                sub.end_date,
+                sub.start_date,
+                sub.id,
+            ),
+        )
+
+    return (
+        user_subscriptions.objects.filter(username=username)
+        .order_by('-start_date', '-id')
+        .first()
+    )
 
 
 def dashboard(request):
@@ -64,13 +93,40 @@ def login(request):
 
         if user.check_password(password):
             session = request.session
-            # session['user_id'] = user.id
             session.cycle_key()
             session['username'] = user.username
             session['email'] = user.email
             session['name'] = user.name
 
-            # update last login time to now
+            # Get the user's subscription
+            try:
+                subscription = _pick_subscription_for_session(user.username)
+                
+                if subscription:
+                    # User has an existing subscription - use it
+                    session['subscription_type'] = _normalize_plan_name(subscription.subscription_type)
+                    session['plan_limit'] = subscription.plan_limit or 10
+                else:
+                    # No subscription exists - create a default free one once.
+                    subscription = user_subscriptions.objects.create(
+                        username=user.username,
+                        subscription_type='free',
+                        status='active',
+                        end_date=timezone.now() + timedelta(days=30),
+                        plan_limit=10,
+                    )
+                    session['subscription_type'] = 'free'
+                    session['plan_limit'] = subscription.plan_limit or 10
+                
+                session['is_authenticated'] = True
+                
+            except Exception as e:
+                # Fallback if subscription retrieval fails
+                session['subscription_type'] = 'free'
+                session['is_authenticated'] = True
+                session['plan_limit'] = 10
+            
+            # Update last login time
             user.lst_login = timezone.now()
             user.save()
 
@@ -88,6 +144,3 @@ def login(request):
 def logout(request):
     request.session.flush()
     return render(request,'login.html')
-
-
-# def guest_session(request)

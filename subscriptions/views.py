@@ -1,6 +1,7 @@
 import json
 from datetime import timedelta
 from decimal import Decimal
+import logging
 
 import stripe
 from django.conf import settings
@@ -13,8 +14,46 @@ from django.views.decorators.http import require_POST
 
 from .models import user_subscriptions
 
+import time
 
-stripe.api_key = getattr(settings, "SK_KEY", "")
+logger = logging.getLogger(__name__)
+
+
+def _safe_int_setting(name, default_value, min_value):
+    try:
+        value = int(getattr(settings, name, default_value))
+    except (TypeError, ValueError):
+        return default_value
+    return max(min_value, value)
+
+
+STRIPE_REQUEST_TIMEOUT_SECONDS = _safe_int_setting("STRIPE_REQUEST_TIMEOUT_SECONDS", 12, 3)
+STRIPE_CHECKOUT_RETRY_COUNT = _safe_int_setting("STRIPE_CHECKOUT_RETRY_COUNT", 1, 1)
+
+def _validate_stripe_config():
+    """Validate Stripe API key is properly configured"""
+    api_key = getattr(settings, "SK_KEY", "").strip()
+    if not api_key:
+        return False, "Stripe API key (SK_KEY) is not configured. Check your environment variables."
+    if not api_key.startswith(("sk_live_", "sk_test_")):
+        return False, "Invalid Stripe API key format. Should start with 'sk_live_' or 'sk_test_'."
+    stripe.api_key = api_key
+    return True, "Stripe configured successfully"
+
+
+def _configure_stripe_http_client():
+    # Keep checkout responsive even when Stripe network connectivity is poor.
+    try:
+        stripe.default_http_client = stripe.http_client.RequestsClient(
+            timeout=STRIPE_REQUEST_TIMEOUT_SECONDS
+        )
+    except Exception:
+        # If Stripe internals differ by version, continue with default client.
+        pass
+
+# Initial validation
+_validate_stripe_config()
+_configure_stripe_http_client()
 
 PLAN_CATALOG = {
     "Free": {
@@ -39,6 +78,10 @@ PLAN_CATALOG = {
         "duration_days": 30,
     },
 }
+
+
+def _normalize_plan_name(plan_name):
+    return (plan_name or "").strip().lower()
 
 
 def _get_checkout_payment_methods():
@@ -66,31 +109,44 @@ def _get_checkout_payment_methods():
 
 
 def _create_checkout_session(domain, plan, plan_name, email, username, payment_methods):
-    return stripe.checkout.Session.create(
-        mode="payment",
-        payment_method_types=payment_methods,
-        line_items=[
-            {
-                "price_data": {
-                    "currency": plan["currency"],
-                    "product_data": {
-                        "name": f"Invyra {plan_name} Plan",
-                        "description": plan["description"],
-                    },
-                    "unit_amount": int(plan["amount"] * 100),
+    # Retry only transient Stripe network failures.
+    for attempt in range(STRIPE_CHECKOUT_RETRY_COUNT):
+        try:
+            return stripe.checkout.Session.create(
+                mode="payment",
+                payment_method_types=payment_methods,
+                line_items=[
+                    {
+                        "price_data": {
+                            "currency": plan["currency"],
+                            "product_data": {
+                                "name": f"Invyra {plan_name} Plan",
+                                "description": plan["description"],
+                            },
+                            "unit_amount": int(plan["amount"] * 100),
+                        },
+                        "quantity": 1,
+                    }
+                ],
+                success_url=f"{domain}{reverse('stripe_success')}?session_id={{CHECKOUT_SESSION_ID}}",
+                cancel_url=f"{domain}{reverse('stripe_cancel')}",
+                customer_email=email or None,
+                metadata={
+                    "username": username,
+                    "plan_name": plan_name,
+                    "plan_limit": plan["limit"],
                 },
-                "quantity": 1,
-            }
-        ],
-        success_url=f"{domain}{reverse('stripe_success')}?session_id={{CHECKOUT_SESSION_ID}}",
-        cancel_url=f"{domain}{reverse('stripe_cancel')}",
-        customer_email=email or None,
-        metadata={
-            "username": username,
-            "plan_name": plan_name,
-            "plan_limit": plan["limit"],
-        },
-    )
+            )
+        except stripe.error.APIConnectionError as exc:
+            logger.warning(
+                "Stripe API connection error during checkout session creation (attempt %s/%s): %s",
+                attempt + 1,
+                STRIPE_CHECKOUT_RETRY_COUNT,
+                str(exc),
+            )
+            if attempt == STRIPE_CHECKOUT_RETRY_COUNT - 1:
+                raise
+            time.sleep(0.4)
 
 
 def _login_redirect(request):
@@ -119,6 +175,7 @@ def _upsert_checkout_subscription(checkout_session, status_override=None):
         return None
 
     plan = PLAN_CATALOG[plan_name]
+    normalized_plan = _normalize_plan_name(plan_name)
     payment_methods = checkout_session.get("payment_method_types") or []
     payment_method = payment_methods[0] if payment_methods else "card"
     payment_intent = checkout_session.get("payment_intent") or ""
@@ -139,7 +196,7 @@ def _upsert_checkout_subscription(checkout_session, status_override=None):
         stripe_session_id=session_id,
         defaults={
             "username": username,
-            "subscription_type": plan_name,
+            "subscription_type": normalized_plan,
             "start_date": timezone.now(),
             "end_date": _plan_end_date(plan_name),
             "status": final_status,
@@ -155,7 +212,7 @@ def _upsert_checkout_subscription(checkout_session, status_override=None):
 
     if not created:
         subscription.username = username
-        subscription.subscription_type = plan_name
+        subscription.subscription_type = normalized_plan
         subscription.start_date = timezone.now()
         subscription.end_date = _plan_end_date(plan_name)
         subscription.status = final_status
@@ -189,27 +246,54 @@ def stripe_checkout(request):
         request.session["pending_plan"] = (request.POST.get("plan_name") or "").strip()
         return _login_redirect(request)
 
-    plan_name = (request.POST.get("plan_name") or "").strip()
-    if plan_name not in PLAN_CATALOG:
+    requested_plan = (request.POST.get("plan_name") or "").strip()
+    plan_name = next(
+        (name for name in PLAN_CATALOG if name.lower() == requested_plan.lower()),
+        "",
+    )
+    if not plan_name:
         return HttpResponseBadRequest("Invalid plan selected.")
 
     plan = PLAN_CATALOG[plan_name]
+    normalized_plan = _normalize_plan_name(plan_name)
     email = request.session.get("email", "")
 
     if plan["amount"] == Decimal("0.00"):
-        user_subscriptions.objects.create(
-            username=username,
-            subscription_type=plan_name,
-            start_date=timezone.now(),
-            end_date=_plan_end_date(plan_name),
-            status="active",
-            autopay=False,
-            amount=plan["amount"],
-            currency=plan["currency"],
-            plan_limit=plan["limit"],
-            payment_method="free",
-            stripe_customer_email=email,
+        existing_subscription = (
+            user_subscriptions.objects.filter(
+                username=username,
+                subscription_type__iexact=normalized_plan,
+            )
+            .order_by("-start_date", "-id")
+            .first()
         )
+
+        if existing_subscription:
+            existing_subscription.start_date = timezone.now()
+            existing_subscription.end_date = _plan_end_date(plan_name)
+            existing_subscription.status = "active"
+            existing_subscription.autopay = False
+            existing_subscription.amount = plan["amount"]
+            existing_subscription.currency = plan["currency"]
+            existing_subscription.plan_limit = plan["limit"]
+            existing_subscription.payment_method = "free"
+            existing_subscription.stripe_customer_email = email
+            existing_subscription.save()
+        else:
+            user_subscriptions.objects.create(
+                username=username,
+                subscription_type=normalized_plan,
+                start_date=timezone.now(),
+                end_date=_plan_end_date(plan_name),
+                status="active",
+                autopay=False,
+                amount=plan["amount"],
+                currency=plan["currency"],
+                plan_limit=plan["limit"],
+                payment_method="free",
+                stripe_customer_email=email,
+            )
+
         return HttpResponse(
             "Free subscription activated successfully. <a href='/subscriptions/pricing/'>Back to pricing</a>"
         )
@@ -229,6 +313,11 @@ def stripe_checkout(request):
             username=username,
             payment_methods=payment_methods,
         )
+    except stripe.error.APIConnectionError:
+        return HttpResponseBadRequest(
+            "Stripe network error while creating checkout session. "
+            "Please retry in a few seconds."
+        )
     except stripe.error.InvalidRequestError as exc:
         if "Invalid payment_method_types" not in str(exc):
             return HttpResponseBadRequest(
@@ -244,6 +333,11 @@ def stripe_checkout(request):
                 username=username,
                 payment_methods=["card"],
             )
+        except stripe.error.APIConnectionError:
+            return HttpResponseBadRequest(
+                "Stripe network error while creating checkout session. "
+                "Please retry in a few seconds."
+            )
         except stripe.error.StripeError as nested_exc:
             return HttpResponseBadRequest(
                 f"Stripe error ({plan['currency']} {plan['amount']}): {str(nested_exc)}"
@@ -253,19 +347,21 @@ def stripe_checkout(request):
             f"Stripe error ({plan['currency']} {plan['amount']}): {str(exc)}"
         )
 
-    user_subscriptions.objects.create(
-        username=username,
-        subscription_type=plan_name,
-        start_date=timezone.now(),
-        end_date=_plan_end_date(plan_name),
-        status="pending",
-        autopay=False,
-        amount=plan["amount"],
-        currency=plan["currency"],
-        plan_limit=plan["limit"],
-        payment_method="pending",
+    user_subscriptions.objects.get_or_create(
         stripe_session_id=checkout_session.id,
-        stripe_customer_email=email,
+        defaults={
+            "username": username,
+            "subscription_type": normalized_plan,
+            "start_date": timezone.now(),
+            "end_date": _plan_end_date(plan_name),
+            "status": "pending",
+            "autopay": False,
+            "amount": plan["amount"],
+            "currency": plan["currency"],
+            "plan_limit": plan["limit"],
+            "payment_method": "pending",
+            "stripe_customer_email": email,
+        },
     )
 
     return redirect(checkout_session.url, code=303)
@@ -285,6 +381,10 @@ def stripe_success(request):
 
     try:
         checkout_session = stripe.checkout.Session.retrieve(session_id)
+    except stripe.error.APIConnectionError:
+        return HttpResponseBadRequest(
+            "Stripe network error while verifying payment. Please retry in a few seconds."
+        )
     except stripe.error.StripeError as exc:
         return HttpResponseBadRequest(f"Unable to verify Stripe session: {str(exc)}")
 

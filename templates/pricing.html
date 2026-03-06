@@ -137,9 +137,16 @@
                     <span class="fs-4">Invyra</span>
                 </a>
                 <nav class="d-inline-flex mt-2 mt-md-0 ms-md-auto"> <a
-                    class="me-3 py-2 link-body-emphasis text-decoration-none" href="/">Home</a> <a
-                    class="me-3 py-2 link-body-emphasis text-decoration-none" href="/auth/login/">Login</a> <a
-                    class="py-2 link-body-emphasis text-decoration-none" href="#">Pricing</a> </nav>
+                    class="me-3 py-2 link-body-emphasis text-decoration-none" href="/">Home</a> 
+                    {% if not request.session.username %}
+                    <a
+                    class="me-3 py-2 link-body-emphasis text-decoration-none" href="/auth/login/">Login</a> 
+                    {% else %}
+                    <a 
+                    class="me-3 py-2 link-body-emphasis text-decoration-none" href="/auth/logout/">Logout</a> 
+                    {% endif %}
+
+                    <a class="py-2 link-body-emphasis text-decoration-none" href="#">Pricing</a> </nav>
             </div>
             <div class="pricing-header p-3 pb-md-4 mx-auto text-center">
                 <h1 class="display-4 fw-normal text-body-emphasis">Pricing</h1>
@@ -178,6 +185,12 @@
                             <div class="alert alert-warning small py-2 mt-auto mb-3" role="alert">
                                 Upgrade to Pro to continue analyzing invoices.
                             </div>
+                            {% if request.session.subscription_type == 'free' %}
+                                <p class="small text-body-secondary mb-2">You are currently on the Free plan.</p>
+                           
+                 
+                                {% else %}
+                        
                             <form method="POST" action="{% url 'stripe_checkout' %}" class="w-100">
                                 {% csrf_token %}
                                 <input type="hidden" name="plan_name" value="Free">
@@ -186,6 +199,9 @@
                                 <input type="hidden" name="plan_description" value="10 invoice analyses per month, Basic AI fraud detection, Invoice upload and analysis, Fraud risk score">
                                 <button type="submit" class="w-100 btn btn-lg btn-outline-primary">Sign up for free</button>
                             </form>
+
+                            {% endif %}
+                          
                         </div>
                     </div>
                 </div>
@@ -219,6 +235,11 @@
                                 <li>No API integration</li>
                                 <li>No team accounts</li>
                             </ul>
+                            {% if request.session.subscription_type == "pro" %}
+                                <p class="small text-body-secondary mb-2">You are currently on the Pro plan.</p>
+                                {% else %}
+
+
                             <form method="POST" action="{% url 'stripe_checkout' %}" class="w-100">
                                 {% csrf_token %}
                                 <input type="hidden" name="plan_name" value="Pro">
@@ -227,6 +248,7 @@
                                 <input type="hidden" name="plan_description" value="1000 invoice analyses per month, Advanced AI fraud detection, Blockchain verification, Vendor analytics, Export reports, Priority processing">
                                 <button type="submit" class="w-100 btn btn-lg btn-primary mt-auto">Get started</button>
                             </form>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -258,6 +280,9 @@
                                 <li>Vendor risk analytics dashboard</li>
                                 <li>Exportable compliance reports</li>
                             </ul>
+                            {% if request.session.subscription_type == "enterprise" %}
+                                <p class="small text-body-secondary mb-2">You are currently on the Enterprise plan.</p>
+                            {% else %}
                             <form method="POST" action="{% url 'stripe_checkout' %}" class="w-100">
                                 {% csrf_token %}
                                 <input type="hidden" name="plan_name" value="Enterprise">
@@ -266,6 +291,7 @@
                                 <input type="hidden" name="plan_description" value="Unlimited invoice analyses, Unlimited fraud analysis, API access, Team collaboration, Multiple users, Custom fraud rules, Real-time alerts, Bulk processing">
                                 <button type="submit" class="w-100 btn btn-lg btn-primary mt-auto">Get started</button>
                             </form>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
