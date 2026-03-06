@@ -356,34 +356,39 @@ def invoice_upload(request):
     # Record invoice on blockchain
     blockchain_result = None
     blockchain_error = None
-    try:
-        blockchain_data = {
-            'invoice_number': invoice_number,
-            'vendor_name': extracted["vendor_name"],
-            'total_amount': str(extracted["total_amount"]),
-            'risk_score': str(invoice_obj.risk_score) if invoice_obj.risk_score else '0.0',
-            'invoice_date': extracted["invoice_date"].isoformat() if extracted["invoice_date"] else '',
-            'raw_text': extracted["raw_text"],
-        }
-        
-        blockchain_result = record_invoice_on_blockchain(blockchain_data)
-        
-        if blockchain_result['success']:
-            # Save blockchain transaction record
-            blockchain_records.objects.create(
-                invoice_id=invoice_obj,
-                transaction_hash=blockchain_result['tx_hash'],
-                invoice_hash=blockchain_result['document_hash'],
-                network='ganache',
-                block_number=blockchain_result['block_number']
-            )
-            invoice_obj.status = "blockchain_recorded"
+    
+    if invoice_obj.status != "flagged" and invoice_obj.status != "risk_failed" and invoice_obj.status != "rejected":
+        try:
+            blockchain_data = {
+                'invoice_number': invoice_number,
+                'vendor_name': extracted["vendor_name"],
+                'total_amount': str(extracted["total_amount"]),
+                'risk_score': str(invoice_obj.risk_score) if invoice_obj.risk_score else '0.0',
+                'invoice_date': extracted["invoice_date"].isoformat() if extracted["invoice_date"] else '',
+                'raw_text': extracted["raw_text"],
+            }
+            
+            blockchain_result = record_invoice_on_blockchain(blockchain_data)
+            
+            if blockchain_result['success']:
+                # Save blockchain transaction record
+                blockchain_records.objects.create(
+                    invoice_id=invoice_obj,
+                    transaction_hash=blockchain_result['tx_hash'],
+                    invoice_hash=blockchain_result['document_hash'],
+                    network='ganache',
+                    block_number=blockchain_result['block_number']
+                )
+                invoice_obj.status = "blockchain_recorded"
+                invoice_obj.save(update_fields=["status", "updated_at"])
+            else:
+                blockchain_error = blockchain_result.get('error', 'Unknown blockchain error')
+                invoice_obj.status = "blockchain_failed"
+                invoice_obj.save(update_fields=["status", "updated_at"])
+        except Exception as e:
+            blockchain_error = str(e)
+            invoice_obj.status = "blockchain_failed"
             invoice_obj.save(update_fields=["status", "updated_at"])
-        else:
-            blockchain_error = blockchain_result.get('error', 'Unknown blockchain error')
-    except Exception as e:
-        blockchain_error = str(e)
-
     # Add plan limit info for logged-in users
     if not is_guest:
         from auth1.views import get_dashboard_context

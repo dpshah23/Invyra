@@ -277,7 +277,7 @@ def login(request):
 @ratelimit(key='ip', rate='5/m', block=True)
 def logout(request):
     request.session.flush()
-    return render(request,'login.html')
+    return redirect('/')
 
 def guest_session(request):
     """
