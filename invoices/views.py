@@ -206,10 +206,18 @@ def invoice_upload(request):
     is_guest = not username
     
     if request.method == "GET":
-        return render(request, "invoice_upload.html", {
+        context = {
             "is_guest": is_guest,
             "guest_upload_limit_reached": False
-        })
+        }
+        # Show plan limit info to logged-in users
+        if not is_guest:
+            plan_limit = request.session.get("plan_limit", 10)
+            user_invoice_count = invoices.objects.filter(username=username).count()
+            context["plan_limit"] = plan_limit
+            context["invoice_count"] = user_invoice_count
+            context["remaining_uploads"] = max(0, plan_limit - user_invoice_count)
+        return render(request, "invoice_upload.html", context)
     
     # Guest upload limit: max 1 invoice per guest session
     if is_guest:
@@ -219,6 +227,20 @@ def invoice_upload(request):
                 "error": "Guest users can upload a maximum of 1 invoice. Please sign in to upload more.",
                 "guest_upload_limit_reached": True,
                 "is_guest": is_guest
+            })
+    else:
+        # Logged-in user: check plan limit
+        plan_limit = request.session.get("plan_limit", 10)
+        user_invoice_count = invoices.objects.filter(username=username).count()
+        
+        if user_invoice_count >= plan_limit:
+            return render(request, "invoice_upload.html", {
+                "error": f"You have reached your plan limit of {plan_limit} invoices. Please upgrade your plan to upload more.",
+                "plan_limit_reached": True,
+                "is_guest": is_guest,
+                "plan_limit": plan_limit,
+                "invoice_count": user_invoice_count,
+                "remaining_uploads": 0
             })
 
     file = request.FILES.get("invoice")
@@ -353,5 +375,14 @@ def invoice_upload(request):
         "blockchain_error": blockchain_error,
         "is_guest": is_guest,
     }
+    
+    # Add plan limit info for logged-in users
+    if not is_guest:
+        plan_limit = request.session.get("plan_limit", 10)
+        user_invoice_count = invoices.objects.filter(username=username).count()
+        context["plan_limit"] = plan_limit
+        context["invoice_count"] = user_invoice_count
+        context["remaining_uploads"] = max(0, plan_limit - user_invoice_count)
+    
     return render(request, "invoice_upload.html", context)
         

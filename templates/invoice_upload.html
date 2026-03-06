@@ -70,6 +70,16 @@
                 <strong>Guest Mode:</strong> As a guest, you can upload 1 invoice to preview our fraud detection. <br>
                 <a href="/auth/signup/" style="color: #e0f2fe; font-weight: bold;">Sign up for free</a> to upload more invoices and save them permanently.
             </div>
+            {% else %}
+            <!-- Logged-in user: show plan limit -->
+            {% if plan_limit %}
+            <div class="ok" style="margin-bottom: 12px;">
+                <strong>Your Plan:</strong> {{ invoice_count }}/{{ plan_limit }} invoices uploaded
+                {% if remaining_uploads > 0 %}
+                ({{ remaining_uploads }} remaining)
+                {% endif %}
+            </div>
+            {% endif %}
             {% endif %}
             
             <form method="post" enctype="multipart/form-data">
@@ -87,6 +97,10 @@
             <br><br>
             <a href="/auth/login/" style="color: #fecaca; font-weight: bold;">Sign In</a> or 
             <a href="/auth/signup/" style="color: #fecaca; font-weight: bold;">Create Account</a> to upload more invoices.
+            {% endif %}
+            {% if plan_limit_reached %}
+            <br><br>
+            <a href="/subscriptions/pricing/" style="color: #fecaca; font-weight: bold;">Upgrade Your Plan</a> to upload more invoices.
             {% endif %}
         </div>
         {% endif %}
