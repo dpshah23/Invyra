@@ -389,6 +389,38 @@ def invoice_upload(request):
             blockchain_error = str(e)
             invoice_obj.status = "blockchain_failed"
             invoice_obj.save(update_fields=["status", "updated_at"])
+
+    # UPDATE VENDOR ML HISTORY
+    if not is_guest and invoice_obj.status in ["processed", "blockchain_recorded", "blockchain_failed"] and invoice_obj.vendor_name:
+        try:
+            from invoices.models import Vendor
+            amount_val = float(invoice_obj.amount)
+            vendor_obj, created = Vendor.objects.get_or_create(
+                username=username,
+                name=invoice_obj.vendor_name,
+                defaults={
+                    'total_invoices': 0,
+                    'total_amount_processed': 0,
+                    'average_amount': 0,
+                    'risk_score': 50.0,
+                }
+            )
+            vendor_obj.total_invoices += 1
+            vendor_obj.total_amount_processed = float(vendor_obj.total_amount_processed) + amount_val
+            vendor_obj.average_amount = vendor_obj.total_amount_processed / vendor_obj.total_invoices
+            
+            if invoice_obj.invoice_date:
+                vendor_obj.last_invoice_date = invoice_obj.invoice_date
+            elif not vendor_obj.last_invoice_date:
+                vendor_obj.last_invoice_date = datetime.now().date()
+            
+            # Reduce risk score for successful invoices, raising trust in the vendor over time
+            vendor_obj.risk_score = max(10.0, vendor_obj.risk_score - 2.0)
+            vendor_obj.is_trusted = vendor_obj.risk_score <= 20.0
+            vendor_obj.save()
+        except Exception:
+            pass
+
     # Add plan limit info for logged-in users
     if not is_guest:
         from auth1.views import get_dashboard_context

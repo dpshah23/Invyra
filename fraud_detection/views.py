@@ -122,6 +122,44 @@ def _extract_features(payload, model_bundle):
 		"duplicate_invoice_number_flag": 1.0 if duplicate_count > 0 else 0.0,
 		"duplicate_count": duplicate_count,
 	}
+	
+	vendor_avg_amount = 0.0
+	is_new_vendor = 1.0
+	amount_ratio = 1.0
+	days_since_last_invoice = 30.0
+	vendor_risk_score = 50.0
+	amount_anomaly_flag = 0.0
+
+	if username and vendor_name:
+		from invoices.models import Vendor
+		vendor = Vendor.objects.filter(username=username, name__iexact=vendor_name).first()
+		if vendor:
+			is_new_vendor = 0.0
+			vendor_avg_amount = float(vendor.average_amount)
+			vendor_risk_score = float(vendor.risk_score)
+			
+			if vendor_avg_amount > 0:
+				amount_ratio = float(amount_float / vendor_avg_amount)
+				
+			if amount_ratio >= 3.0 and amount_float > 1000.0:
+				amount_anomaly_flag = 1.0
+				
+			if vendor.last_invoice_date:
+				try:
+					today = datetime.now().date()
+					days_since_last_invoice = float((today - vendor.last_invoice_date).days)
+				except Exception:
+					pass
+					
+	features.update({
+		"vendor_avg_amount": vendor_avg_amount,
+		"is_new_vendor": is_new_vendor,
+		"amount_ratio": amount_ratio,
+		"days_since_last_invoice": days_since_last_invoice,
+		"vendor_risk_score": vendor_risk_score,
+		"amount_anomaly_flag": amount_anomaly_flag,
+	})
+
 	return features
 
 
@@ -201,12 +239,12 @@ def _score_from_sklearn(payload, model, features=None):
 		'payment_method': 'Bank Transfer',
 		'duplicate_invoice': float(features.get('duplicate_count', 0.0)),
 		'bank_changed': 0.0,
-		'vendor_avg_amount': _to_float(payload.get('total_amount'), 0.0),
-		'amount_ratio': 1.0,
+		'vendor_avg_amount': float(features.get('vendor_avg_amount', 0.0)),
+		'amount_ratio': float(features.get('amount_ratio', 1.0)),
 		'invoice_frequency_last30days': 1.0,
-		'vendor_risk_score': 50.0,
-		'days_since_last_invoice': 30.0,
-		'is_new_vendor': 1.0,
+		'vendor_risk_score': float(features.get('vendor_risk_score', 50.0)),
+		'days_since_last_invoice': float(features.get('days_since_last_invoice', 30.0)),
+		'is_new_vendor': float(features.get('is_new_vendor', 1.0)),
 		'invoice_day': 1,
 		'invoice_month': 1,
 		'invoice_year': 2026,
@@ -245,6 +283,37 @@ def _score_from_sklearn(payload, model, features=None):
 	except Exception as e:
 		score = 0.5 # fallback
 
+	# ---------------------------------------------------------
+	# HYBRID AI SYSTEM: Boost ML Score with Hard Fraud Rules
+	# ---------------------------------------------------------
+	reasons = ["Machine Learning AI Analysis completed."]
+	
+	if features:
+		if features.get("amount_anomaly_flag", 0) == 1.0:
+			score += 0.20
+			reasons.append(f"Amount {payload.get('currency', 'USD')} {payload.get('total_amount', '0.0')} is unusually high for this historically verified vendor.")
+		if features.get("is_new_vendor") == 1.0 and payload.get('vendor_name'):
+			score += 0.05
+			reasons.append("First-time vendor detected. Risk inherently increased.")
+		if features.get("duplicate_count", 0) > 0:
+			score = max(score, 0.95)
+			reasons.append("Exact Duplicate Invoice Number Detected in System.")
+		if features.get("bank_account_suspicious_flag"):
+			score += 0.25
+			reasons.append("Bank account format is highly suspicious.")
+		if features.get("high_amount_flag"):
+			score += 0.15
+			reasons.append("Total amount exceeds normal bounds.")
+		if features.get("missing_vendor_flag"):
+			score += 0.15
+			reasons.append("Unrecognized or missing vendor name.")
+		if features.get("low_ocr_confidence_flag"):
+			score += 0.10
+			reasons.append("Poor document quality; AI confidence is very low.")
+
+	# Cap score at 1.0 maximum
+	score = min(1.0, score)
+
 	high_th = 0.75
 	medium_th = 0.45
 
@@ -255,16 +324,15 @@ def _score_from_sklearn(payload, model, features=None):
 	else:
 		risk_label = "low"
 
-	reason = "Machine Learning AI Analysis completed."
-	if score >= medium_th:
-		reason += " High risk indicators flagged by the model."
-		
+	if score >= medium_th and len(reasons) == 1:
+		reasons.append("High risk hidden patterns flagged by ML model.")
+
 	return {
 		"risk_score": round(score, 4),
 		"risk_label": risk_label,
 		"is_fraud": risk_label in {"high", "medium"},
-		"reason": reason,
-		"model_version": "sklearn-rf-v1",
+		"reason": " ".join(reasons),
+		"model_version": "hybrid-ml-rules-v2",
 	}
 
 
