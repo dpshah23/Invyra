@@ -84,6 +84,46 @@ def _normalize_plan_name(plan_name):
     return (plan_name or "").strip().lower()
 
 
+def _get_active_subscription(username):
+    """Get the currently active subscription, if any."""
+    from django.db.models import Q
+    return user_subscriptions.objects.filter(
+        username=username,
+        status__in=["active", "pending"],
+        end_date__gt=timezone.now()
+    ).order_by("-end_date", "-id").first()
+
+
+def _cleanup_duplicate_subscriptions(username):
+    """Remove duplicate/inactive subscriptions for a user, keeping only the most recent of each type."""
+    from django.db.models import Max, F
+    
+    # Get the most recent active/pending subscription of each type
+    kept_subscriptions = set()
+    
+    for sub_type in ["free", "pro", "enterprise"]:
+        latest = user_subscriptions.objects.filter(
+            username=username,
+            subscription_type=sub_type,
+            status__in=["active", "pending"]
+        ).order_by("-start_date", "-id").first()
+        
+        if latest:
+            kept_subscriptions.add(latest.id)
+    
+    # Delete all other subscriptions for this user (keep only one active per plan type)
+    user_subscriptions.objects.filter(
+        username=username,
+        status__in=["active", "pending"]
+    ).exclude(id__in=kept_subscriptions).delete()
+    
+    # Delete all expired subscriptions
+    user_subscriptions.objects.filter(
+        username=username,
+        end_date__lte=timezone.now()
+    ).delete()
+
+
 def _get_checkout_payment_methods():
     configured = getattr(settings, "STRIPE_PAYMENT_METHOD_TYPES", ["card"])
 
@@ -192,14 +232,30 @@ def _upsert_checkout_subscription(checkout_session, status_override=None):
     checkout_status = "active" if checkout_session.get("payment_status") == "paid" else "pending"
     final_status = status_override or checkout_status
 
+    # Clean up duplicates
+    _cleanup_duplicate_subscriptions(username)
+    
+    # Check for active subscription
+    active_sub = _get_active_subscription(username)
+    
+    # Determine when the new subscription should start
+    if active_sub and active_sub.subscription_type != normalized_plan:
+        # Different plan type - schedule to start after current subscription expires
+        start_date = active_sub.end_date
+        new_status = "scheduled" if final_status == "active" else "pending"
+    else:
+        # Same plan or no active subscription - start immediately
+        start_date = timezone.now()
+        new_status = final_status
+
     subscription, created = user_subscriptions.objects.get_or_create(
         stripe_session_id=session_id,
         defaults={
             "username": username,
             "subscription_type": normalized_plan,
-            "start_date": timezone.now(),
-            "end_date": _plan_end_date(plan_name),
-            "status": final_status,
+            "start_date": start_date,
+            "end_date": start_date + timedelta(days=plan["duration_days"]),
+            "status": new_status,
             "autopay": False,
             "amount": plan["amount"],
             "currency": plan["currency"],
@@ -213,9 +269,9 @@ def _upsert_checkout_subscription(checkout_session, status_override=None):
     if not created:
         subscription.username = username
         subscription.subscription_type = normalized_plan
-        subscription.start_date = timezone.now()
-        subscription.end_date = _plan_end_date(plan_name)
-        subscription.status = final_status
+        subscription.start_date = start_date
+        subscription.end_date = start_date + timedelta(days=plan["duration_days"])
+        subscription.status = new_status
         subscription.autopay = False
         subscription.amount = plan["amount"]
         subscription.currency = plan["currency"]
@@ -258,28 +314,38 @@ def stripe_checkout(request):
     normalized_plan = _normalize_plan_name(plan_name)
     email = request.session.get("email", "")
 
+    # Clean up duplicates first
+    _cleanup_duplicate_subscriptions(username)
+    
     if plan["amount"] == Decimal("0.00"):
-        existing_subscription = (
-            user_subscriptions.objects.filter(
-                username=username,
-                subscription_type__iexact=normalized_plan,
-            )
-            .order_by("-start_date", "-id")
-            .first()
-        )
-
-        if existing_subscription:
-            existing_subscription.start_date = timezone.now()
-            existing_subscription.end_date = _plan_end_date(plan_name)
-            existing_subscription.status = "active"
-            existing_subscription.autopay = False
-            existing_subscription.amount = plan["amount"]
-            existing_subscription.currency = plan["currency"]
-            existing_subscription.plan_limit = plan["limit"]
-            existing_subscription.payment_method = "free"
-            existing_subscription.stripe_customer_email = email
-            existing_subscription.save()
+        # Free plan: check for active subscription
+        active_sub = _get_active_subscription(username)
+        
+        if active_sub:
+            # If user has active subscription, schedule free plan to start after current expires
+            if active_sub.subscription_type == normalized_plan:
+                # Same plan type - just refresh it
+                active_sub.start_date = timezone.now()
+                active_sub.end_date = _plan_end_date(plan_name)
+                active_sub.status = "active"
+                active_sub.save()
+            else:
+                # Different plan - schedule new free plan to start after current ends
+                user_subscriptions.objects.create(
+                    username=username,
+                    subscription_type=normalized_plan,
+                    start_date=active_sub.end_date,
+                    end_date=active_sub.end_date + timedelta(days=PLAN_CATALOG[plan_name]["duration_days"]),
+                    status="scheduled",
+                    autopay=False,
+                    amount=plan["amount"],
+                    currency=plan["currency"],
+                    plan_limit=plan["limit"],
+                    payment_method="free",
+                    stripe_customer_email=email,
+                )
         else:
+            # No active subscription - create immediately
             user_subscriptions.objects.create(
                 username=username,
                 subscription_type=normalized_plan,

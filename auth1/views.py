@@ -5,6 +5,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django_ratelimit.decorators import ratelimit
 from subscriptions.models import user_subscriptions
+from random import randint
 
 # Create your views here.
 
@@ -17,9 +18,36 @@ def _normalize_plan_name(value):
 
 
 def _pick_subscription_for_session(username):
-    active_subscriptions = list(
-        user_subscriptions.objects.filter(username=username, status='active')
+    """
+    Pick the best subscription for the user:
+    1. Auto-activate any scheduled subscriptions that are ready
+    2. Prioritize ACTIVE subscriptions that are still valid (end_date in future)
+    3. Then by plan tier (enterprise > pro > free)
+    4. Then by soonest expiration
+    5. Then most recently created
+    """
+    from django.db.models import Q
+    from django.utils import timezone
+    
+    # Auto-activate scheduled subscriptions that are ready
+    ready_to_activate = user_subscriptions.objects.filter(
+        username=username,
+        status='scheduled',
+        start_date__lte=timezone.now()
     )
+    for sub in ready_to_activate:
+        sub.status = 'active'
+        sub.save()
+    
+    # First, try to get an active and valid subscription
+    active_subscriptions = list(
+        user_subscriptions.objects.filter(
+            username=username, 
+            status__in=['active', 'pending'],
+            end_date__gt=timezone.now()
+        )
+    )
+    
     if active_subscriptions:
         return max(
             active_subscriptions,
@@ -31,6 +59,7 @@ def _pick_subscription_for_session(username):
             ),
         )
 
+    # Fallback to most recent subscription of any type
     return (
         user_subscriptions.objects.filter(username=username)
         .order_by('-start_date', '-id')
@@ -144,3 +173,17 @@ def login(request):
 def logout(request):
     request.session.flush()
     return render(request,'login.html')
+
+@ratelimit(key='ip', rate='5/m', block=True)
+def guest_session(request):
+    session=request.session
+    session.cycle_key()
+    session['username'] = f"guest_{session.session_key[:8]}"+int(randint(1000,9999))
+    session['email'] = ''
+    session['name'] = 'Guest User'
+    session['subscription_type'] = 'free'
+    session['plan_limit'] = 5
+    session['is_authenticated'] = False
+
+
+    return redirect(POST_LOGIN_FALLBACK)

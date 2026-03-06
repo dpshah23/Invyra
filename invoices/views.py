@@ -24,7 +24,7 @@ possible_tesseract_paths = [
 
 for path in possible_tesseract_paths:
     if os.path.exists(path):
-        pytesseract.pytesseract.pytesseract_cmd = path
+        pytesseract.pytesseract.tesseract_cmd = path
         break
 
 
