@@ -1,4 +1,4 @@
-# 🛡️ InvGuard
+# 🛡️ Invyra
 ## Smart Invoice Fraud Detection & Blockchain Authentication Platform
 
 > Built with ❤️ during **HackaMinde Hackathon** by Nirma University (March 5-7, 2026)
@@ -12,7 +12,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
 [![Blockchain](https://img.shields.io/badge/Blockchain-Ethereum%20Sepolia-8b4513.svg)](https://sepolia.etherscan.io/)
 
-> **InvGuard** is an enterprise-grade B2B Micro-SaaS platform that automates invoice fraud detection using AI-powered analysis and creates tamper-proof proof of authenticity using blockchain technology. Perfect for finance teams, accounting firms, and procurement departments.
+> **Invyra** is an enterprise-grade B2B Micro-SaaS platform that automates invoice fraud detection using AI-powered analysis and creates tamper-proof proof of authenticity using blockchain technology. Perfect for finance teams, accounting firms, and procurement departments.
 
 ---
 
@@ -37,16 +37,16 @@
 
 ## 🎯 Overview
 
-**InvGuard** is a comprehensive solution designed to combat invoice fraud in B2B transactions. The platform combines **machine learning anomaly detection**, **OCR-based data extraction**, and **blockchain-based immutability** to provide finance teams with automated, trustworthy invoice verification.
+**Invyra** is a comprehensive solution designed to combat invoice fraud in B2B transactions. The platform combines **machine learning anomaly detection**, **OCR-based data extraction**, and **blockchain-based immutability** to provide finance teams with automated, trustworthy invoice verification.
 
-### Why InvGuard?
+### Why Invyra?
 
 - **50-70% of businesses** experience invoice fraud annually
 - **Manual verification** takes 30-45 minutes per invoice
 - **Average fraud loss** is $100K+ per incident
 - **No audit trail** for document tampering post-approval
 
-InvGuard reduces fraud risk by **94%** and verification time by **80%**.
+Invyra reduces fraud risk by **94%** and verification time by **80%**.
 
 ---
 

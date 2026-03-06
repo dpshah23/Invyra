@@ -1,4 +1,4 @@
-# 🏛️ InvGuard - Architecture & Technical Deep Dive
+# 🏛️ Invyra - Architecture & Technical Deep Dive
 
 ## System Architecture Overview
 
