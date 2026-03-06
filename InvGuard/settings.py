@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+from django.core.exceptions import ImproperlyConfigured
+from urllib.parse import parse_qs, urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,9 +43,9 @@ _load_env_file(BASE_DIR / ".env")
 SECRET_KEY = 'django-insecure-z995+lwhy-q)u2+=r*qsclpv6%!qio5l(3$@s7#3orr#0#*2&9'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['16.171.152.233']
 
 
 # Application definition
@@ -97,14 +99,76 @@ WSGI_APPLICATION = 'InvGuard.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+SERVICE_URL = os.getenv("SERVICE_URL") or os.getenv("DATABASE_URL")
+parsed_service_url = urlparse(SERVICE_URL) if SERVICE_URL else None
+service_query = parse_qs(parsed_service_url.query) if parsed_service_url else {}
+
+DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
+DB_NAME = (
+    os.getenv("DB_NAME")
+    or os.getenv("PGDATABASE")
+    or os.getenv("dbname")
+    or (parsed_service_url.path.lstrip("/") if parsed_service_url else None)
+)
+DB_USER = (
+    os.getenv("DB_USER")
+    or os.getenv("PGUSER")
+    or os.getenv("user")
+    or (parsed_service_url.username if parsed_service_url else None)
+)
+DB_PASSWORD = (
+    os.getenv("DB_PASSWORD")
+    or os.getenv("PGPASSWORD")
+    or os.getenv("password")
+    or (parsed_service_url.password if parsed_service_url else None)
+)
+DB_HOST = (
+    os.getenv("DB_HOST")
+    or os.getenv("PGHOST")
+    or os.getenv("host")
+    or (parsed_service_url.hostname if parsed_service_url else None)
+)
+DB_PORT = (
+    os.getenv("DB_PORT")
+    or os.getenv("PGPORT")
+    or os.getenv("port")
+    or (str(parsed_service_url.port) if parsed_service_url and parsed_service_url.port else None)
+    or "5432"
+)
+DB_SSLMODE = (
+    os.getenv("DB_SSLMODE")
+    or (service_query.get("sslmode", [None])[0] if service_query else None)
+    or "require"
+)
+
+missing_db_values = []
+if not DB_NAME:
+    missing_db_values.append("DB_NAME or PGDATABASE")
+if not DB_USER:
+    missing_db_values.append("DB_USER or PGUSER")
+if not DB_PASSWORD:
+    missing_db_values.append("DB_PASSWORD or PGPASSWORD")
+if not DB_HOST:
+    missing_db_values.append("DB_HOST or PGHOST")
+
+if missing_db_values:
+    raise ImproperlyConfigured(
+        "Missing PostgreSQL environment variables: " + ", ".join(missing_db_values)
+    )
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": DB_ENGINE,
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
+        "OPTIONS": {
+            "sslmode": DB_SSLMODE,
+        },
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
