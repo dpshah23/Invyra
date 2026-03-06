@@ -167,9 +167,16 @@ def _score_from_bundle(features, model_bundle):
 		"model_version": str(model_bundle.get("version", "demo-rule-v1")),
 	}
 
-def _score_from_sklearn(payload, model):
+def _score_from_sklearn(payload, model, features=None):
 	if not HAS_ML_DEPS:
 		return _score_from_bundle(_extract_features(payload, DEFAULT_MODEL_BUNDLE), DEFAULT_MODEL_BUNDLE)
+		
+	if features is None:
+		features = {}
+
+	# Convert bank account to purely numeric explicitly, because the ML model pipeline expects a float here
+	numeric_bank = re.sub(r"\D", "", str(payload.get('bank_account', '')))
+	bank_account_num = float(numeric_bank) if numeric_bank else 0.0
 
 	# Try to build a dataframe row based on typical features
 	row_dict = {
@@ -189,10 +196,10 @@ def _score_from_sklearn(payload, model):
 		'total_amount': _to_float(payload.get('total_amount'), 0.0),
 		'currency': payload.get('currency', 'USD'),
 		'currency_change_flag': 0.0,
-		'bank_account_number': payload.get('bank_account', ''),
+		'bank_account_number': bank_account_num,
 		'bank_name': 'Unknown',
 		'payment_method': 'Bank Transfer',
-		'duplicate_invoice': 0.0,
+		'duplicate_invoice': float(features.get('duplicate_count', 0.0)),
 		'bank_changed': 0.0,
 		'vendor_avg_amount': _to_float(payload.get('total_amount'), 0.0),
 		'amount_ratio': 1.0,
@@ -278,7 +285,7 @@ def detect_risk(request):
 	
 	if model_bundle_info["type"] == "sklearn":
 		features = _extract_features(payload, DEFAULT_MODEL_BUNDLE) # keep fallback features for DB
-		score_result = _score_from_sklearn(payload, model_bundle_info["model"])
+		score_result = _score_from_sklearn(payload, model_bundle_info["model"], features)
 	else:
 		model_bundle = model_bundle_info["model"]
 		features = _extract_features(payload, model_bundle)
