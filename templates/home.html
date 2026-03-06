@@ -70,7 +70,11 @@
       </p>
 
       <div class="hero-buttons">
-        <a href="/templates/login.html"><button class="primary-btn">Start Analyzing →</button></a>
+        {% if request.session.username %}
+        <a href="/auth/dashboard/"><button class="primary-btn">Start Analyzing →</button></a>
+        {% else %}
+        <a href="/auth/login"><button class="primary-btn">Start Analyzing →</button></a>
+        {% endif %}
         <a href="/templates/login.html"><button class="secondary-btn">Watch Demo</button></a>
       </div>
     </section>

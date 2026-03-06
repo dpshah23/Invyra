@@ -56,3 +56,20 @@ class blockchain_records(models.Model):
     def __str__(self):
         return f"Blockchain Record for Invoice {self.invoice_id.invoice_number} - TxHash: {self.transaction_hash}"  
     
+class Vendor(models.Model):
+    username = models.CharField(max_length=150, db_index=True)
+    name = models.CharField(max_length=255, db_index=True)
+    total_invoices = models.IntegerField(default=0)
+    total_amount_processed = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    average_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    last_invoice_date = models.DateField(blank=True, null=True)
+    risk_score = models.FloatField(default=50.0) # Base risk for unknown/new
+    is_trusted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('username', 'name')
+
+    def __str__(self):
+        return f"{self.name} ({self.username})"
