@@ -198,16 +198,9 @@ def logout(request):
     request.session.flush()
     return render(request,'login.html')
 
-@ratelimit(key='ip', rate='5/m', block=True)
 def guest_session(request):
-    session=request.session
-    session.cycle_key()
-    session['username'] = f"guest_{session.session_key[:8]}"+int(randint(1000,9999))
-    session['email'] = ''
-    session['name'] = 'Guest User'
-    session['subscription_type'] = 'free'
-    session['plan_limit'] = 5
-    session['is_authenticated'] = False
-
-
-    return redirect(POST_LOGIN_FALLBACK)
+    """
+    Redirect guest users to invoice upload page.
+    GuestSessionMiddleware will auto-assign guest_session_id on the request.
+    """
+    return redirect('/invoices/upload/')
