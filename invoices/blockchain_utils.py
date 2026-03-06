@@ -6,12 +6,14 @@ from django.conf import settings
 
 
 def get_web3_connection():
-    """Connect to Ganache blockchain"""
-    ganache_url = getattr(settings, 'GANACHE_URL', 'http://127.0.0.1:7545')
-    w3 = Web3(Web3.HTTPProvider(ganache_url))
+    """Connect to blockchain (Ganache for dev, Polygon Mumbai for prod)"""
+    # Use environment variable or default to Ganache for local development
+    blockchain_url = getattr(settings, 'BLOCKCHAIN_RPC_URL', None) or os.getenv('BLOCKCHAIN_RPC_URL', 'http://127.0.0.1:7545')
+    
+    w3 = Web3(Web3.HTTPProvider(blockchain_url))
     
     if not w3.is_connected():
-        raise ConnectionError(f"Failed to connect to Ganache at {ganache_url}")
+        raise ConnectionError(f"Failed to connect to blockchain at {blockchain_url}")
     
     return w3
 
