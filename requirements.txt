@@ -7,3 +7,5 @@ scikit-learn
 pandas
 joblib
 web3
+bcrypt
+django-ratelimit
