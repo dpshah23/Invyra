@@ -224,6 +224,9 @@ def _call_detect_risk_api(request, payload):
     return {"ok": True, "status_code": response.status_code, "data": response.json()}
 
 
+from django_ratelimit.decorators import ratelimit
+
+@ratelimit(key='ip', rate='5/m', block=True)
 def invoice_upload(request):
     username = request.session.get("username", "")
     guest_session_id = request.session.get("guest_session_id", "")
@@ -259,8 +262,12 @@ def invoice_upload(request):
             })
     else:
         # Logged-in user: check plan limit
+        MAXINT = 2**31 - 1
         from auth1.views import get_dashboard_context
-        plan_limit = int(request.session.get("plan_limit", 10))
+        if request.session.get(plan_limit)=="unlimited":
+            plan_limit=MAXINT
+        else:
+            plan_limit = int(request.session.get("plan_limit", 10))
         user_invoice_count = invoices.objects.filter(username=username).count()
         
         if user_invoice_count >= plan_limit:
@@ -512,7 +519,7 @@ def invoice_detail(request, invoice_id):
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-@csrf_exempt
+@ratelimit(key='ip', rate='10/m', block=True)
 def save_blockchain_record(request):
     if request.method == "POST":
         try:
@@ -521,7 +528,13 @@ def save_blockchain_record(request):
             tx_hash = data.get("tx_hash")
             document_hash = data.get("document_hash")
             
-            invoice_obj = get_object_or_404(invoices, id=invoice_id)
+            username = request.session.get("username", "")
+            guest_session_id = request.session.get("guest_session_id", "")
+            
+            if username:
+                invoice_obj = get_object_or_404(invoices, id=invoice_id, username=username)
+            else:
+                invoice_obj = get_object_or_404(invoices, id=invoice_id, guest_session_id=guest_session_id)
             
             # Save blockchain transaction record
             blockchain_records.objects.create(

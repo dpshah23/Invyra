@@ -1,9 +1,5 @@
-# 🛡️ InvGuard
+# 🛡️ InvGuard (Invyra)
 ## Smart Invoice Fraud Detection & Blockchain Authentication Platform
-
-> Built with ❤️ during **Hacked Minds Hackathon** by Nirma University (March 5-7, 2026)
-
----
 
 [![GitHub Stars](https://img.shields.io/github/stars/dpshah23/Invyra?style=social)](https://github.com/dpshah23/Invyra)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -23,7 +19,7 @@
 - [Solution Architecture](#solution-architecture)
 - [Features](#features)
 - [Technical Stack](#technical-stack)
-- [Security & Compliance](#security--compliance-1)
+- [Security & Compliance](#security--compliance)
 - [Installation & Setup](#installation--setup)
 - [Usage Guide](#usage-guide)
 - [API Documentation](#api-documentation)
@@ -37,7 +33,7 @@
 
 ## 🎯 Overview
 
-**InvGuard** is a comprehensive solution designed to combat invoice fraud in B2B transactions. The platform combines **machine learning anomaly detection**, **OCR-based data extraction**, and **blockchain-based immutability** to provide finance teams with automated, trustworthy invoice verification.
+**InvGuard** (formerly Invyra) is a comprehensive solution designed to combat invoice fraud in B2B transactions. The platform combines **machine learning anomaly detection**, **OCR-based data extraction**, and **blockchain-based immutability** to provide finance teams with automated, trustworthy invoice verification.
 
 ### Why InvGuard?
 
@@ -440,7 +436,7 @@ ALLOWED_HOSTS=localhost,127.0.0.1,yourdomain.com
 
 # Database Configuration
 DB_ENGINE=django.db.backends.postgresql
-DB_NAME=Invyra_db
+DB_NAME=invguard_db
 DB_USER=postgres
 DB_PASSWORD=your_password
 DB_HOST=localhost
@@ -839,7 +835,7 @@ python manage.py runserver
 
 # In new terminal:
 # Run Celery task queue (optional)
-celery -A Invyra worker --loglevel=info
+celery -A InvGuard worker --loglevel=info
 ```
 
 ### Docker Production Deployment
@@ -867,7 +863,7 @@ services:
   db:
     image: postgres:15
     environment:
-      POSTGRES_DB: Invyra_dev
+      POSTGRES_DB: invguard_dev
       POSTGRES_PASSWORD: dev_password
     ports:
       - "5432:5432"
@@ -933,7 +929,7 @@ Invyra/
 │   ├── truffle-config.js         # Truffle configuration
 │   └── package.json              # Node dependencies
 │
-├── Invyra/                     # Django main project
+├── InvGuard/                     # Django main project
 │   ├── settings.py               # Django configuration
 │   ├── urls.py                   # URL routing
 │   ├── wsgi.py                   # WSGI configuration
@@ -1107,7 +1103,7 @@ We welcome contributions! Please follow these steps:
 This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file for details.
 
 ```
-Copyright (c) 2026 Invyra / Invyra
+Copyright (c) 2026 InvGuard / Invyra
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1169,6 +1165,6 @@ We will acknowledge within 48 hours and provide updates every 5 days.
 
 ### 🎉 Thank You!
 
-Thank you for using **Invyra**. We're excited to see how you'll use our platform to prevent invoice fraud and secure your financial operations!
+Thank you for using **InvGuard**. We're excited to see how you'll use our platform to prevent invoice fraud and secure your financial operations!
 
 ⭐ If you find this project helpful, please consider giving it a star on GitHub!

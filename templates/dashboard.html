@@ -319,6 +319,7 @@
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
+                                    'X-CSRFToken': '{{ csrf_token }}',
                                 },
                                 body: JSON.stringify({
                                     invoice_id: {{ blockchain_pending_data.invoice_id }},
