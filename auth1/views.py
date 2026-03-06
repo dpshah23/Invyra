@@ -68,10 +68,91 @@ def _pick_subscription_for_session(username):
     )
 
 
+def get_dashboard_context(username):
+    import json
+    from django.db.models import Sum, Count
+    from django.utils import timezone
+    from datetime import timedelta
+    from invoices.models import invoices
+    
+    user_invoices = invoices.objects.filter(username=username).order_by('-created_at')
+    
+    total_invoices = user_invoices.count()
+    
+    # Amount saved (sum of flagged/rejected invoices)
+    fraudulent_invoices = user_invoices.filter(status__in=['flagged', 'rejected'])
+    amount_saved = fraudulent_invoices.aggregate(Sum('amount'))['amount__sum'] or 0
+    
+    # Fraud detection rate
+    fraud_count = fraudulent_invoices.count()
+    fraud_rate = (fraud_count / total_invoices * 100) if total_invoices > 0 else 0
+    
+    # Average risk score
+    # Filter out invoices without a score
+    scored_invoices = user_invoices.exclude(risk_score__isnull=True)
+    scored_count = scored_invoices.count()
+    avg_risk_score = (scored_invoices.aggregate(Sum('risk_score'))['risk_score__sum'] or 0) / scored_count if scored_count > 0 else 0
+    
+    recent_invoices = user_invoices[:5]
+    all_invoices = user_invoices
+
+    # Chart 1: Risk Distribution
+    risk_distribution = {
+        'Low Risk': user_invoices.filter(risk_label='low').count() or 0,
+        'Medium Risk': user_invoices.filter(risk_label='medium').count() or 0,
+        'High Risk': user_invoices.filter(risk_label='high').count() or 0,
+        'Critical Risk': user_invoices.filter(risk_label='critical').count() or 0,
+    }
+
+    # Chart 2: Fraud Types Detected
+    fraud_types_qs = fraudulent_invoices.exclude(fraud_reason='').values('fraud_reason').annotate(count=Count('id')).order_by('-count')[:5]
+    fraud_types = {item['fraud_reason']: item['count'] for item in fraud_types_qs}
+    if not fraud_types:
+        fraud_types = {'None': 0}
+
+    # Chart 3: Processing Trends (Last 4 Weeks)
+    trends = {'labels': [], 'processed': [], 'flagged': [], 'rejected': []}
+    today = timezone.now().date()
+    # Go back 4 weeks
+    for i in range(3, -1, -1):
+        start_date = today - timedelta(days=today.weekday() + (i * 7))
+        end_date = start_date + timedelta(days=6)
+        trends['labels'].append(f"{start_date.strftime('%b %d')}")
+        
+        week_invoices = user_invoices.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
+        trends['processed'].append(week_invoices.filter(status__in=['processed', 'blockchain_recorded']).count())
+        trends['flagged'].append(week_invoices.filter(status='flagged').count())
+        trends['rejected'].append(week_invoices.filter(status='rejected').count())
+
+    return {
+        'total_invoices': total_invoices,
+        'amount_saved': float(amount_saved),
+        'fraud_rate': round(fraud_rate, 1),
+        'fraud_count': fraud_count,
+        'avg_risk_score': round(avg_risk_score, 1),
+        'recent_invoices': recent_invoices,
+        'all_invoices': all_invoices,
+        # JSON dumps for charts
+        'risk_labels': json.dumps(list(risk_distribution.keys())),
+        'risk_data': json.dumps(list(risk_distribution.values())),
+        'fraud_labels': json.dumps(list(fraud_types.keys())),
+        'fraud_data': json.dumps(list(fraud_types.values())),
+        'trend_labels': json.dumps(trends['labels']),
+        'trend_processed': json.dumps(trends['processed']),
+        'trend_flagged': json.dumps(trends['flagged']),
+        'trend_rejected': json.dumps(trends['rejected']),
+    }
+
+
 def dashboard(request):
-    if not request.session.get('username'):
+    username = request.session.get('username')
+    if not username:
         return redirect('/auth/login/')
-    return render(request, 'dashboard.html', {'name': request.session.get('name', '')})
+        
+    context = get_dashboard_context(username)
+    context['name'] = request.session.get('name', '')
+    
+    return render(request, 'dashboard.html', context)
 
 @ratelimit(key='ip', rate='5/m', block=True)
 def signup(request):

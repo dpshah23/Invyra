@@ -1,4 +1,10 @@
 // ===============================
+// Set Chart.js Defaults for Dark Mode
+// ===============================
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = '#334155';
+
+// ===============================
 // Navigation between pages
 // ===============================
 
@@ -30,12 +36,12 @@ const trendChart = new Chart(document.getElementById("trendChart"), {
   type: "line",
 
   data: {
-    labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
+    labels: window.chartData ? window.chartData.trend_labels : ["Week 1", "Week 2", "Week 3", "Week 4"],
 
     datasets: [
       {
-        label: "Approved",
-        data: [10, 13, 12, 16],
+        label: "Processed",
+        data: window.chartData ? window.chartData.trend_processed : [0,0,0,0],
         borderColor: "#22c55e",
         backgroundColor: "rgba(34,197,94,0.2)",
         fill: true,
@@ -44,7 +50,7 @@ const trendChart = new Chart(document.getElementById("trendChart"), {
 
       {
         label: "Flagged",
-        data: [3, 4, 5, 4],
+        data: window.chartData ? window.chartData.trend_flagged : [0,0,0,0],
         borderColor: "#f59e0b",
         backgroundColor: "rgba(245,158,11,0.2)",
         fill: true,
@@ -53,7 +59,7 @@ const trendChart = new Chart(document.getElementById("trendChart"), {
 
       {
         label: "Rejected",
-        data: [1, 2, 2, 3],
+        data: window.chartData ? window.chartData.trend_rejected : [0,0,0,0],
         borderColor: "#ef4444",
         backgroundColor: "rgba(239,68,68,0.2)",
         fill: true,
@@ -82,11 +88,11 @@ const riskChart = new Chart(document.getElementById("riskChart"), {
   type: "pie",
 
   data: {
-    labels: ["Low Risk", "Medium Risk", "High Risk", "Critical Risk"],
+    labels: window.chartData ? window.chartData.risk_labels : ["Low Risk", "Medium Risk", "High Risk", "Critical Risk"],
 
     datasets: [
       {
-        data: [50, 13, 13, 25],
+        data: window.chartData ? window.chartData.risk_data : [0, 0, 0, 0],
 
         backgroundColor: ["#10b981", "#f59e0b", "#fb923c", "#ef4444"],
 
@@ -116,19 +122,13 @@ const fraudChart = new Chart(document.getElementById("fraudChart"), {
   type: "bar",
 
   data: {
-    labels: [
-      "Duplicate",
-      "Bank Modified",
-      "Amount Inflated",
-      "Fake Vendor",
-      "Tampered PDF",
-    ],
+    labels: window.chartData && window.chartData.fraud_labels.length > 0 ? window.chartData.fraud_labels : ["None"],
 
     datasets: [
       {
         label: "Fraud Cases",
 
-        data: [1, 1, 2, 1, 1],
+        data: window.chartData && window.chartData.fraud_data.length > 0 ? window.chartData.fraud_data : [0],
 
         backgroundColor: "#ef4444",
         borderRadius: 6,
@@ -159,6 +159,7 @@ const fraudChart = new Chart(document.getElementById("fraudChart"), {
 
 const selectBtn = document.getElementById("selectBtn");
 const fileInput = document.getElementById("fileInput");
+const submitBtn = document.getElementById("submitBtn");
 
 selectBtn.addEventListener("click", () => {
   fileInput.click();
@@ -168,6 +169,10 @@ fileInput.addEventListener("change", () => {
   if (fileInput.files.length > 0) {
     document.getElementById("fileName").textContent =
       "Selected file: " + fileInput.files[0].name;
+    // Show the submit button so the user can process it
+    submitBtn.style.display = "block";
+  } else {
+    submitBtn.style.display = "none";
   }
 });
 
@@ -183,3 +188,8 @@ uploadHeaderBtn.addEventListener("click", () => {
   // show upload page
   document.getElementById("upload").classList.add("active");
 });
+
+// Auto-switch to upload tab if activeTab is set (e.g., after form submission)
+if (window.activeTab === "upload") {
+  uploadHeaderBtn.click();
+}

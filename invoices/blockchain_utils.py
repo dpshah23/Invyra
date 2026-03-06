@@ -6,9 +6,14 @@ from django.conf import settings
 
 
 def get_web3_connection():
-    """Connect to blockchain (Ganache for dev, Polygon Mumbai for prod)"""
-    # Use environment variable or default to Ganache for local development
-    blockchain_url = getattr(settings, 'BLOCKCHAIN_RPC_URL', None) or os.getenv('BLOCKCHAIN_RPC_URL', 'http://127.0.0.1:7545')
+    """Connect to blockchain RPC (Ganache for dev, testnet/mainnet for hosted RPC)."""
+    # Backward compatible fallback order: BLOCKCHAIN_RPC_URL -> GANACHE_URL -> local default.
+    blockchain_url = (
+        getattr(settings, 'BLOCKCHAIN_RPC_URL', '')
+        or os.getenv('BLOCKCHAIN_RPC_URL', '')
+        or getattr(settings, 'GANACHE_URL', '')
+        or os.getenv('GANACHE_URL', 'http://127.0.0.1:7545')
+    )
     
     w3 = Web3(Web3.HTTPProvider(blockchain_url))
     
@@ -36,17 +41,63 @@ def load_contract():
     
     w3 = get_web3_connection()
     
-    # Get contract address from networks (assumes network_id 5777 for Ganache)
-    network_id = str(w3.net.version)
-    networks = contract_json.get('networks', {})
-    
-    if network_id not in networks:
-        raise ValueError(f"Contract not deployed on network {network_id}. Deploy with 'truffle migrate --reset'")
-    
-    contract_address = networks[network_id]['address']
+    # Prefer explicit contract address from env/settings for hosted networks.
+    configured_contract_address = (
+        getattr(settings, 'BLOCKCHAIN_CONTRACT_ADDRESS', '')
+        or os.getenv('BLOCKCHAIN_CONTRACT_ADDRESS', '')
+    ).strip()
+
+    if configured_contract_address:
+        if not Web3.is_address(configured_contract_address):
+            raise ValueError("BLOCKCHAIN_CONTRACT_ADDRESS is invalid.")
+        contract_address = Web3.to_checksum_address(configured_contract_address)
+    else:
+        network_id = str(w3.net.version)
+        networks = contract_json.get('networks', {})
+
+        if network_id not in networks:
+            raise ValueError(
+                f"Contract not deployed on network {network_id}. "
+                "Set BLOCKCHAIN_CONTRACT_ADDRESS or deploy with truffle migrate on this network."
+            )
+
+        contract_address = networks[network_id]['address']
+
     contract_abi = contract_json['abi']
     
     return w3.eth.contract(address=contract_address, abi=contract_abi), w3
+
+
+def _get_signer_private_key():
+    """Load signer private key for remote RPC transactions."""
+    return (
+        getattr(settings, 'BLOCKCHAIN_SIGNER_PRIVATE_KEY', '')
+        or os.getenv('BLOCKCHAIN_SIGNER_PRIVATE_KEY', '')
+    ).strip()
+
+
+def _build_fee_fields(w3):
+    """Build EIP-1559 fee fields when supported, fallback to gasPrice."""
+    latest_block = w3.eth.get_block('latest')
+    base_fee = latest_block.get('baseFeePerGas')
+
+    if base_fee is None:
+        return {'gasPrice': w3.eth.gas_price}
+
+    try:
+        priority_fee_gwei = int(
+            getattr(settings, 'BLOCKCHAIN_PRIORITY_FEE_GWEI', '')
+            or os.getenv('BLOCKCHAIN_PRIORITY_FEE_GWEI', '2')
+        )
+    except ValueError:
+        priority_fee_gwei = 2
+
+    max_priority_fee = w3.to_wei(priority_fee_gwei, 'gwei')
+    max_fee = (base_fee * 2) + max_priority_fee
+    return {
+        'maxPriorityFeePerGas': max_priority_fee,
+        'maxFeePerGas': max_fee,
+    }
 
 
 def calculate_document_hash(invoice_data):
@@ -90,24 +141,54 @@ def record_invoice_on_blockchain(invoice_data, from_account=None):
             'error': str (if failed)
         }
     """
+    document_hash = calculate_document_hash(invoice_data)
+
     try:
         contract, w3 = load_contract()
-        
-        # Use first account if not specified
-        if from_account is None:
-            from_account = w3.eth.accounts[0]
-        
-        # Calculate document hash
-        document_hash = calculate_document_hash(invoice_data)
-        
-        # Prepare transaction
-        tx_hash = contract.functions.recordInvoice(
+
+        tx_function = contract.functions.recordInvoice(
             str(invoice_data.get('invoice_number', '')),
             str(invoice_data.get('vendor_name', '')),
             str(invoice_data.get('total_amount', '')),
             str(invoice_data.get('risk_score', '0.0')),
             document_hash
-        ).transact({'from': from_account})
+        )
+
+        signer_private_key = _get_signer_private_key()
+
+        if signer_private_key:
+            # Hosted RPC (Alchemy/Infura) path: sign transaction locally.
+            signer = w3.eth.account.from_key(signer_private_key)
+            sender_address = signer.address
+            nonce = w3.eth.get_transaction_count(sender_address)
+
+            tx_params = {
+                'from': sender_address,
+                'nonce': nonce,
+                'chainId': w3.eth.chain_id,
+            }
+            tx_params.update(_build_fee_fields(w3))
+
+            try:
+                tx_params['gas'] = int(tx_function.estimate_gas({'from': sender_address}) * 1.2)
+            except Exception:
+                tx_params['gas'] = 300000
+
+            unsigned_tx = tx_function.build_transaction(tx_params)
+            signed_tx = w3.eth.account.sign_transaction(unsigned_tx, signer_private_key)
+            raw_tx = getattr(signed_tx, 'rawTransaction', None) or getattr(signed_tx, 'raw_transaction')
+            tx_hash = w3.eth.send_raw_transaction(raw_tx)
+        else:
+            # Local Ganache path with unlocked accounts.
+            if from_account is None:
+                available_accounts = w3.eth.accounts
+                if not available_accounts:
+                    raise ValueError(
+                        "No unlocked account available. Set BLOCKCHAIN_SIGNER_PRIVATE_KEY for hosted RPC."
+                    )
+                from_account = available_accounts[0]
+
+            tx_hash = tx_function.transact({'from': from_account})
         
         # Wait for transaction receipt
         tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
@@ -125,7 +206,7 @@ def record_invoice_on_blockchain(invoice_data, from_account=None):
         return {
             'success': False,
             'tx_hash': None,
-            'document_hash': calculate_document_hash(invoice_data),
+            'document_hash': document_hash,
             'block_number': None,
             'error': str(e)
         }

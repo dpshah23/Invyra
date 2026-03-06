@@ -54,7 +54,7 @@ INSTALLED_APPS = [
     'subscriptions',
     'invoices',
     'fraud_detection',
-    
+    'home',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -163,6 +163,10 @@ FRAUD_MODEL_PICKLE_PATH = os.getenv(
 
 # Blockchain settings
 GANACHE_URL = os.getenv("GANACHE_URL", "http://127.0.0.1:7545")
+BLOCKCHAIN_RPC_URL = os.getenv("BLOCKCHAIN_RPC_URL", GANACHE_URL)
+BLOCKCHAIN_CONTRACT_ADDRESS = os.getenv("BLOCKCHAIN_CONTRACT_ADDRESS", "")
+BLOCKCHAIN_SIGNER_PRIVATE_KEY = os.getenv("BLOCKCHAIN_SIGNER_PRIVATE_KEY", "")
+BLOCKCHAIN_PRIORITY_FEE_GWEI = os.getenv("BLOCKCHAIN_PRIORITY_FEE_GWEI", "2")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
