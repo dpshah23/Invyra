@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraudulent Invoice Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial;
+            background: white;
+            padding: 20px;
+        }
+        .invoice-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+        }
+        .header {
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #111;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .header p {
+            color: #444;
+            font-size: 12px;
+            margin: 2px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th {
+            background: #ddd;
+            color: #000;
+            padding: 8px;
+            text-align: left;
+            font-size: 12px;
+        }
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+            font-size: 12px;
+        }
+        .total {
+            text-align: right;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <div class="header">
+            <h1>INVOICE</h1>
+            <!-- RED FLAG 1: Suspicious/Generic Company Name -->
+            <p><strong>From:</strong> Global Trading Partners LLC</p>
+            <p>Address: PO Box 1234, Offshore Islands</p>
+            <p>Phone: +1-888-UNKNOWN | Email: billing123@freemail.com</p>
+            <p><strong>Bank Account:</strong> 1111111111 (No bank name provided!)</p>
+        </div>
+
+        <table>
+            <tr>
+                <!-- RED FLAG 2: Missing/Incomplete Invoice Details -->
+                <td><strong>Invoice #:</strong> INV-2026-001 (Duplicate with legitimate invoice!)</td>
+                <td style="text-align: right;"><strong>Date:</strong> March 06, 2026</td>
+            </tr>
+            <tr>
+                <td><strong>To:</strong> ACME Corporation</td>
+                <td style="text-align: right;"><strong>Due:</strong> March 06, 2026 (Same day!)</td>
+            </tr>
+        </table>
+
+        <!-- RED FLAG 3: Suspicious/Rounded Amount -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th style="text-align: right;">Price</th>
+                    <th style="text-align: right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- RED FLAG 4: Vague/Generic Line Items -->
+                <tr>
+                    <td>Consulting Services (Unspecified)</td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">$15,000.00</td>
+                    <td style="text-align: right;">$15,000.00</td>
+                </tr>
+                <!-- RED FLAG 5: Unusually High Amount -->
+                <tr>
+                    <td>Software License (Description missing)</td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">$8,500.00</td>
+                    <td style="text-align: right;">$8,500.00</td>
+                </tr>
+                <!-- RED FLAG 6: Multiple suspicious items -->
+                <tr>
+                    <td>Administrative Fees</td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">$2,250.00</td>
+                    <td style="text-align: right;">$2,250.00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="text-align: right; margin: 20px 0;">
+            <!-- RED FLAG 7: Unverified Bank Account Format -->
+            <p><strong>Total Amount Due: $25,750.00</strong></p>
+            <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                <strong>Wire Instructions:</strong><br>
+                Account: 1111111111<br>
+                Bank: Unknown Banking Corp (Offshore)<br>
+                SWIFT: N/A<br>
+                Reference: Urgent - Process Immediately
+            </p>
+        </div>
+
+        <div class="footer">
+            <!-- RED FLAG 8: Lack of Professional Details -->
+            <p style="color: #c00; font-weight: bold;">⚠️ URGENT: Payment required immediately to avoid service interruption</p>
+            <p>No tax ID provided | No company registration info | No contact person name</p>
+        </div>
+    </div>
+</body>
+</html>

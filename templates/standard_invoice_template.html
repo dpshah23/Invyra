@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standard Invoice</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: white;
+            padding: 40px;
+        }
+        .invoice-container {
+            max-width: 900px;
+            margin: 0 auto;
+            border: 2px solid #333;
+            padding: 40px;
+            background: white;
+        }
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            border-bottom: 1px solid #999;
+            padding-bottom: 20px;
+        }
+        .company-info h1 {
+            color: #1a5490;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        .company-info p {
+            color: #666;
+            font-size: 14px;
+            margin: 2px 0;
+        }
+        .invoice-details {
+            text-align: right;
+        }
+        .invoice-details h2 {
+            font-size: 24px;
+            color: #1a5490;
+            margin-bottom: 10px;
+        }
+        .invoice-details p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .addresses {
+            display: flex;
+            justify-content: space-between;
+            margin: 30px 0;
+        }
+        .address-section {
+            flex: 1;
+        }
+        .address-section h3 {
+            color: #333;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .address-section p {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+        }
+        th {
+            background: #1a5490;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:last-child td {
+            border-bottom: 2px solid #333;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .totals {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .totals-box {
+            width: 300px;
+        }
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+        .totals-row.subtotal {
+            border-bottom: 1px solid #ddd;
+        }
+        .totals-row.tax {
+            border-bottom: 1px solid #ddd;
+        }
+        .totals-row.grand-total {
+            border-top: 2px solid #333;
+            border-bottom: 2px solid #333;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 12px 0;
+            background: #f0f0f0;
+        }
+        .grand-total-amount {
+            color: #1a5490;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .notes {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        .notes h4 {
+            color: #333;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .notes p {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .payment-terms {
+            margin-top: 20px;
+        }
+        .payment-terms table {
+            width: 100%;
+            margin-top: 10px;
+        }
+        .payment-terms th {
+            background: #f0f0f0;
+            color: #333;
+            text-align: left;
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        .payment-terms td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="invoice-header">
+            <div class="company-info">
+                <h1>ACME Corporation</h1>
+                <p>123 Business Avenue</p>
+                <p>New York, NY 10001</p>
+                <p>Phone: (555) 123-4567</p>
+                <p>Email: accounting@acmecorp.com</p>
+                <p>Tax ID: 12-3456789</p>
+            </div>
+            <div class="invoice-details">
+                <h2>INVOICE</h2>
+                <p><strong>Invoice #:</strong> INV-2026-001456</p>
+                <p><strong>Invoice Date:</strong> March 06, 2026</p>
+                <p><strong>Due Date:</strong> March 20, 2026</p>
+                <p><strong>PO Number:</strong> PO-2026-5432</p>
+            </div>
+        </div>
+
+        <!-- From/To -->
+        <div class="addresses">
+            <div class="address-section">
+                <h3>Bill From</h3>
+                <p>
+                    Premium Office Supplies Inc.<br>
+                    456 Commerce Street<br>
+                    Boston, MA 02101<br>
+                    <strong>Contact:</strong> John Smith<br>
+                    <strong>Email:</strong> sales@premiumsupplies.com<br>
+                    <strong>Phone:</strong> (555) 987-6543
+                </p>
+            </div>
+            <div class="address-section">
+                <h3>Bill To</h3>
+                <p>
+                    ACME Corporation<br>
+                    Accounts Payable<br>
+                    123 Business Avenue<br>
+                    New York, NY 10001<br>
+                    <strong>Attention:</strong> Sarah Johnson<br>
+                    <strong>Email:</strong> sarah@acmecorp.com
+                </p>
+            </div>
+        </div>
+
+        <!-- Line Items Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th style="text-align: center;">Quantity</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Premium Office Paper (10 reams, 8.5x11)</td>
+                    <td style="text-align: center;">5</td>
+                    <td class="text-right">$45.00</td>
+                    <td class="text-right">$225.00</td>
+                </tr>
+                <tr>
+                    <td>Professional Ink Cartridges (Color Set)</td>
+                    <td style="text-align: center;">3</td>
+                    <td class="text-right">$65.00</td>
+                    <td class="text-right">$195.00</td>
+                </tr>
+                <tr>
+                    <td>Ergonomic Office Chairs (Mesh)</td>
+                    <td style="text-align: center;">2</td>
+                    <td class="text-right">$299.00</td>
+                    <td class="text-right">$598.00</td>
+                </tr>
+                <tr>
+                    <td>Desk Organizer Set (Walnut, 6-piece)</td>
+                    <td style="text-align: center;">4</td>
+                    <td class="text-right">$38.50</td>
+                    <td class="text-right">$154.00</td>
+                </tr>
+                <tr>
+                    <td>Shipping & Handling</td>
+                    <td style="text-align: center;">1</td>
+                    <td class="text-right">$50.00</td>
+                    <td class="text-right">$50.00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Totals -->
+        <div class="totals">
+            <div class="totals-box">
+                <div class="totals-row subtotal">
+                    <span>Subtotal:</span>
+                    <span>$1,222.00</span>
+                </div>
+                <div class="totals-row tax">
+                    <span>Tax (8.75%):</span>
+                    <span>$106.93</span>
+                </div>
+                <div class="totals-row grand-total">
+                    <span>TOTAL DUE:</span>
+                    <span class="grand-total-amount">$1,328.93</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Terms -->
+        <div class="payment-terms">
+            <h4>Payment Terms</h4>
+            <table>
+                <tr>
+                    <th>Bank Name</th>
+                    <th>Account Holder</th>
+                    <th>Account Number</th>
+                    <th>Routing Number</th>
+                </tr>
+                <tr>
+                    <td>Chase Bank N.A.</td>
+                    <td>Premium Office Supplies Inc.</td>
+                    <td>987654321098</td>
+                    <td>021000021</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Notes -->
+        <div class="notes">
+            <h4>Terms & Conditions</h4>
+            <p>
+                <strong>Payment Terms:</strong> Net 14 days from invoice date. A 1.5% monthly interest charge will be applied to payments made after the due date.<br><br>
+                <strong>Delivery:</strong> Items delivered on March 04, 2026. All items covered by 1-year manufacturer warranty.<br><br>
+                <strong>Return Policy:</strong> Items may be returned within 30 days of purchase for full refund if in original condition.<br><br>
+                Thank you for your business. For questions regarding this invoice, please contact our billing department.
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>This is a computer-generated invoice. No signature is required.</p>
+            <p>Premium Office Supplies Inc. | TAX ID: 45-6789012 | © 2026 All Rights Reserved</p>
+        </div>
+    </div>
+</body>
+</html>

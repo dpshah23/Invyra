@@ -268,9 +268,29 @@
                 <button id="signMetaMaskBtn" style="background: #f6851b; color: white; padding: 10px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; border: none;">Sign with MetaMask</button>
                 <div id="metamask-status" style="margin-top: 15px; color: #94a3b8;"></div>
 
-                <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
-                <script>
-                    document.getElementById('signMetaMaskBtn').addEventListener('click', async () => {
+                <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js" type="text/javascript"></script>
+                <script type="text/javascript">
+                    // Wait for both DOM and ethers.js to be ready
+                    window.addEventListener('load', function() {
+                        let checkCounter = 0;
+                        const maxChecks = 50; // 5 seconds max
+                        
+                        function checkEthers() {
+                            checkCounter++;
+                            
+                            if (typeof ethers !== 'undefined') {
+                                console.log('Ethers.js loaded successfully');
+                                initMetaMask();
+                            } else if (checkCounter < maxChecks) {
+                                setTimeout(checkEthers, 100);
+                            } else {
+                                document.getElementById('metamask-status').innerHTML = 
+                                    '<span style="color: #ef4444;">Failed to load blockchain library. Please refresh the page.</span>';
+                            }
+                        }
+                        
+                        function initMetaMask() {
+                            document.getElementById('signMetaMaskBtn').addEventListener('click', async () => {
                         const statusDiv = document.getElementById('metamask-status');
                         const btn = document.getElementById('signMetaMaskBtn');
                         
@@ -342,6 +362,11 @@
                             btn.disabled = false;
                             btn.innerText = "Sign with MetaMask";
                         }
+                    });
+                        }
+                        
+                        // Start checking for ethers.js
+                        checkEthers();
                     });
                 </script>
             </div>

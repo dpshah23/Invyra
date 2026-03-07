@@ -226,6 +226,22 @@ def _call_detect_risk_api(request, payload):
 
 from django_ratelimit.decorators import ratelimit
 
+
+def _resolve_plan_limit(raw_value, default=10):
+    """Convert session plan limit into a usable integer (supports 'Unlimited')."""
+    max_limit = 2**31 - 1
+
+    normalized = str(raw_value if raw_value is not None else default).strip().lower()
+    if normalized in {"unlimited", "infinite", "inf", "no-limit", "nolimit"}:
+        return max_limit
+
+    try:
+        parsed = int(normalized)
+    except (TypeError, ValueError):
+        return default
+
+    return parsed if parsed > 0 else default
+
 @ratelimit(key='ip', rate='5/m', block=True)
 def invoice_upload(request):
     username = request.session.get("username", "")
@@ -236,7 +252,7 @@ def invoice_upload(request):
         if not is_guest:
             from auth1.views import get_dashboard_context
             dashboard_context = get_dashboard_context(username)
-            plan_limit = int(request.session.get("plan_limit", 10))
+            plan_limit = _resolve_plan_limit(request.session.get("plan_limit", 10))
             user_invoice_count = dashboard_context["total_invoices"]
             dashboard_context["plan_limit"] = plan_limit
             dashboard_context["invoice_count"] = user_invoice_count
@@ -262,12 +278,8 @@ def invoice_upload(request):
             })
     else:
         # Logged-in user: check plan limit
-        MAXINT = 2**31 - 1
         from auth1.views import get_dashboard_context
-        if request.session.get(plan_limit)=="unlimited":
-            plan_limit=MAXINT
-        else:
-            plan_limit = int(request.session.get("plan_limit", 10))
+        plan_limit = _resolve_plan_limit(request.session.get("plan_limit", 10))
         user_invoice_count = invoices.objects.filter(username=username).count()
         
         if user_invoice_count >= plan_limit:
@@ -460,7 +472,7 @@ def invoice_upload(request):
             "active_tab": "upload"
         })
         
-        plan_limit = int(request.session.get("plan_limit", 10))
+        plan_limit = _resolve_plan_limit(request.session.get("plan_limit", 10))
         user_invoice_count = dashboard_context["total_invoices"]
         dashboard_context["plan_limit"] = plan_limit
         dashboard_context["invoice_count"] = user_invoice_count

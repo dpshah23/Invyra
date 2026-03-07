@@ -1,0 +1,252 @@
+{
+  "fraud_scenarios": [
+    {
+      "id": "FRAUD_001",
+      "name": "Duplicate Invoice Attempt",
+      "description": "Same invoice number submitted multiple times - classic duplicate payment fraud",
+      "payload": {
+        "username": "testuser",
+        "invoice_id": 12345,
+        "invoice_number": "INV-2026-001456",
+        "vendor_name": "Premium Office Supplies Inc.",
+        "total_amount": "1328.93",
+        "currency": "USD",
+        "invoice_date": "2026-03-06",
+        "due_date": "2026-03-20",
+        "bank_account": "987654321098",
+        "ocr_confidence": 0.95
+      },
+      "expected_risk_score": 0.85,
+      "expected_label": "high",
+      "fraud_indicators": [
+        "Exact duplicate of legitimate invoice",
+        "Same vendor, amount, and date",
+        "Attempt to process payment twice"
+      ]
+    },
+    {
+      "id": "FRAUD_002",
+      "name": "Amount Manipulation",
+      "description": "Invoice amount significantly inflated from vendor's average (3x higher)",
+      "payload": {
+        "username": "acmeuser",
+        "invoice_id": 12346,
+        "invoice_number": "INV-2026-005821",
+        "vendor_name": "Office Depot",
+        "total_amount": "45000.00",
+        "currency": "USD",
+        "invoice_date": "2026-03-07",
+        "due_date": "2026-03-21",
+        "bank_account": "1122334455",
+        "ocr_confidence": 0.87
+      },
+      "expected_risk_score": 0.72,
+      "expected_label": "high",
+      "fraud_indicators": [
+        "Amount 3x higher than vendor average ($15,000)",
+        "Unusual spike for routine supplies",
+        "Potential document tampering"
+      ]
+    },
+    {
+      "id": "FRAUD_003",
+      "name": "Bank Account Mismatch",
+      "description": "Invoice shows legitimate vendor but requests payment to suspicious new bank account",
+      "payload": {
+        "username": "companyuser",
+        "invoice_id": 12347,
+        "invoice_number": "INV-2026-008934",
+        "vendor_name": "AT&T Communications",
+        "total_amount": "5250.00",
+        "currency": "USD",
+        "invoice_date": "2026-03-08",
+        "due_date": "2026-03-22",
+        "bank_account": "9999888877",
+        "ocr_confidence": 0.92
+      },
+      "expected_risk_score": 0.68,
+      "expected_label": "high",
+      "fraud_indicators": [
+        "Bank account format suspicious/invalid",
+        "Mismatch with known vendor accounts",
+        "Possible account hijacking/redirect fraud"
+      ]
+    },
+    {
+      "id": "FRAUD_004",
+      "name": "New Vendor High Amount",
+      "description": "First invoice from completely unknown vendor for large sum",
+      "payload": {
+        "username": "newcompany",
+        "invoice_id": 12348,
+        "invoice_number": "INV-2026-015634",
+        "vendor_name": "Global Trading Partners LLC",
+        "total_amount": "25750.00",
+        "currency": "USD",
+        "invoice_date": "2026-03-09",
+        "due_date": "2026-03-09",
+        "bank_account": "1111111111",
+        "ocr_confidence": 0.65
+      },
+      "expected_risk_score": 0.78,
+      "expected_label": "high",
+      "fraud_indicators": [
+        "New/unknown vendor",
+        "Very high amount for first invoice",
+        "Due date same as invoice date (urgent pressure)",
+        "Low OCR confidence (document quality poor)",
+        "Generic company name (Global Trading Partners)",
+        "Suspicious bank account (all 1s)"
+      ]
+    },
+    {
+      "id": "FRAUD_005",
+      "name": "Vague Description + Urgency",
+      "description": "Generic invoice items with pressure tactics and missing details",
+      "payload": {
+        "username": "targetcorp",
+        "invoice_id": 12349,
+        "invoice_number": "INV-2026-099999",
+        "vendor_name": "Consulting Services International",
+        "total_amount": "18500.00",
+        "currency": "USD",
+        "invoice_date": "2026-03-10",
+        "due_date": "2026-03-10",
+        "bank_account": "5555555555",
+        "ocr_confidence": 0.58
+      },
+      "expected_risk_score": 0.75,
+      "expected_label": "high",
+      "fraud_indicators": [
+        "Vague line items (Consulting Services Unspecified)",
+        "Very high amount",
+        "Same-day due date (pressure tactic)",
+        "Low OCR confidence",
+        "Generic vendor name",
+        "No specific deliverables mentioned"
+      ]
+    },
+    {
+      "id": "FRAUD_006",
+      "name": "Legacy Account Compromise",
+      "description": "Legitimate vendor with normal patterns, but one invoice with suspicious payment routing",
+      "payload": {
+        "username": "oldclient",
+        "invoice_id": 12350,
+        "invoice_number": "INV-2026-002211",
+        "vendor_name": "Microsoft Corporation",
+        "total_amount": "8500.00",
+        "currency": "USD",
+        "invoice_date": "2026-03-11",
+        "due_date": "2026-03-25",
+        "bank_account": "3333333333",
+        "ocr_confidence": 0.91
+      },
+      "expected_risk_score": 0.65,
+      "expected_label": "medium",
+      "fraud_indicators": [
+        "Bank account appears altered/unauthorized",
+        "Different routing from vendor's history",
+        "Legitimate vendor but compromised account",
+        "Amount reasonable for this vendor"
+      ]
+    },
+    {
+      "id": "LEGIT_001",
+      "name": "Legitimate Invoice (Low Risk)",
+      "description": "Standard legitimate invoice with all proper details",
+      "payload": {
+        "username": "acmeuser",
+        "invoice_id": 12351,
+        "invoice_number": "INV-2026-001457",
+        "vendor_name": "Premium Office Supplies Inc.",
+        "total_amount": "1328.93",
+        "currency": "USD",
+        "invoice_date": "2026-03-06",
+        "due_date": "2026-03-20",
+        "bank_account": "987654321098",
+        "ocr_confidence": 0.96
+      },
+      "expected_risk_score": 0.15,
+      "expected_label": "low",
+      "fraud_indicators": [
+        "Established vendor",
+        "Consistent amount/frequency",
+        "Valid bank account details",
+        "High OCR confidence",
+        "Reasonable payment terms (Net 14)"
+      ]
+    },
+    {
+      "id": "LEGIT_002",
+      "name": "Legitimate High-Value Invoice",
+      "description": "High-value invoice but legitimate with proper documentation",
+      "payload": {
+        "username": "largecorp",
+        "invoice_id": 12352,
+        "invoice_number": "INV-2026-045832",
+        "vendor_name": "IBM Enterprise Solutions",
+        "total_amount": "125000.00",
+        "currency": "USD",
+        "invoice_date": "2026-03-05",
+        "due_date": "2026-03-20",
+        "bank_account": "4444555566",
+        "ocr_confidence": 0.94
+      },
+      "expected_risk_score": 0.32,
+      "expected_label": "medium",
+      "fraud_indicators": [
+        "High value but justified (enterprise software)",
+        "Established vendor (IBM)",
+        "Proper documentation",
+        "Reasonable payment terms",
+        "Note: Medium risk due to high amount, but all other factors legitimate"
+      ]
+    },
+    {
+      "id": "FRAUD_007",
+      "name": "Poor Document Quality + Suspicious Amount",
+      "description": "Invoice with low OCR confidence combined with unusual amount",
+      "payload": {
+        "username": "smallbiz",
+        "invoice_id": 12353,
+        "invoice_number": "INV-2026-123456",
+        "vendor_name": "Unknown Distribution",
+        "total_amount": "7777.77",
+        "currency": "USD",
+        "invoice_date": "2026-03-12",
+        "due_date": "2026-03-13",
+        "bank_account": "7777777777",
+        "ocr_confidence": 0.42
+      },
+      "expected_risk_score": 0.82,
+      "expected_label": "high",
+      "fraud_indicators": [
+        "Very low OCR confidence (42%)",
+        "Rounded/suspicious amount (7777.77)",
+        "New/unknown vendor",
+        "Bank account suspicious (all 7s)",
+        "Very short payment window (1 day)",
+        "Document likely falsified/photoshopped"
+      ]
+    }
+  ],
+  "testing_instructions": {
+    "how_to_use": [
+      "1. Copy any payload from this file",
+      "2. POST to /fraud_detection/detect-risk/ endpoint",
+      "3. System will analyze and return risk_score + risk_label",
+      "4. Compare against expected_risk_score and expected_label"
+    ],
+    "example_curl": "curl -X POST http://your-server/fraud_detection/detect-risk/ -H 'Content-Type: application/json' -d '{\"username\": \"testuser\", \"invoice_number\": \"INV-2026-001456\", ...}'",
+    "fraud_detection_metrics": {
+      "duplicate_detection": "Flags invoices with duplicate invoice_number in system",
+      "amount_anomaly": "Detects amounts 2x+ higher than vendor average or 5x+ higher regardless",
+      "bank_account_validation": "Checks account number format and validity",
+      "ocr_confidence": "Flags documents with <65% OCR confidence",
+      "vendor_risk": "Higher risk for new vendors or vendors with poor history",
+      "payment_urgency": "Flags same-day due dates and urgent language",
+      "compound_risk": "Combines multiple factors for accuracy"
+    }
+  }
+}
